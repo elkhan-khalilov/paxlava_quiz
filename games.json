@@ -1,0 +1,103 @@
+[
+    {
+        "id": 1,
+        "date": "2026-05-21",
+        "title": "Paxlava Quiz",
+        "teams": [
+            {
+                "id": 1,
+                "name": "komanda1",
+                "score": 2323
+            },
+            {
+                "id": 2,
+                "name": "rüerüer",
+                "score": 324234
+            }
+        ]
+    },
+    {
+        "id": 2,
+        "date": "2026-05-21",
+        "title": "teamb",
+        "teams": [
+            {
+                "id": 1,
+                "name": "efdfsdf",
+                "score": 4545
+            }
+        ]
+    },
+    {
+        "id": 3,
+        "date": "2026-06-01",
+        "results": [
+            {
+                "id": 1,
+                "team_id": 2,
+                "team_name": "Komanda 2",
+                "rounds": {
+                    "round_1": 0,
+                    "round_2": 50,
+                    "round_3": 23,
+                    "round_4": 0,
+                    "round_5": 32,
+                    "round_6": 0,
+                    "round_7": 0,
+                    "round_8": 0
+                }
+            },
+            {
+                "id": 2,
+                "team_id": 1,
+                "team_name": "Komanda1",
+                "rounds": {
+                    "round_1": 20,
+                    "round_2": -60,
+                    "round_3": 0,
+                    "round_4": 0,
+                    "round_5": 0,
+                    "round_6": 0,
+                    "round_7": 0,
+                    "round_8": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": 4,
+        "date": "2026-07-02",
+        "results": [
+            {
+                "id": 1,
+                "team_id": 2,
+                "team_name": "Komanda 2",
+                "rounds": {
+                    "round_1": 0,
+                    "round_2": 0,
+                    "round_3": 0,
+                    "round_4": 0,
+                    "round_5": 0,
+                    "round_6": 0,
+                    "round_7": 0,
+                    "round_8": -9
+                }
+            },
+            {
+                "id": 2,
+                "team_id": 1,
+                "team_name": "Komanda1",
+                "rounds": {
+                    "round_1": 0,
+                    "round_2": 0,
+                    "round_3": 0,
+                    "round_4": 0,
+                    "round_5": 0,
+                    "round_6": 0,
+                    "round_7": 0,
+                    "round_8": -9
+                }
+            }
+        ]
+    }
+]

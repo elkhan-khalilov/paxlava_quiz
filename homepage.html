@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paxlava Quiz | Ana səhifə</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #fff7e6, #f4d08f);
+      color: #2b1b0f;
+    }
+
+    header {
+      width: 100%;
+      padding: 24px 8%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 24px;
+      font-weight: 800;
+      color: #7a3e12;
+    }
+
+    .logo span {
+      font-size: 32px;
+    }
+
+    nav a {
+      margin-left: 28px;
+      text-decoration: none;
+      color: #4b2a13;
+      font-weight: 600;
+      transition: 0.3s;
+    }
+
+    nav a:hover {
+      color: #b86b1c;
+    }
+
+    .hero {
+      min-height: calc(100vh - 92px);
+      padding: 40px 8% 80px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      align-items: center;
+      gap: 48px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 10px 18px;
+      background: rgba(122, 62, 18, 0.12);
+      color: #7a3e12;
+      border-radius: 999px;
+      font-weight: 700;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      font-size: clamp(42px, 6vw, 76px);
+      line-height: 1.05;
+      margin-bottom: 22px;
+      color: #3a200f;
+    }
+
+    .highlight {
+      color: #b86b1c;
+    }
+
+    .subtitle {
+      max-width: 620px;
+      font-size: 19px;
+      line-height: 1.7;
+      color: #5d3b20;
+      margin-bottom: 34px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 36px;
+    }
+
+    .btn {
+      padding: 15px 26px;
+      border-radius: 14px;
+      border: none;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      transition: 0.3s;
+    }
+
+    .btn-primary {
+      background: #8b4513;
+      color: #fff;
+      box-shadow: 0 12px 24px rgba(139, 69, 19, 0.25);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      background: #6f340d;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.6);
+      color: #7a3e12;
+      border: 1px solid rgba(122, 62, 18, 0.2);
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-3px);
+      background: #fff;
+    }
+
+    .stats {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      min-width: 150px;
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.58);
+      border: 1px solid rgba(122, 62, 18, 0.14);
+      backdrop-filter: blur(10px);
+    }
+
+    .stat-card strong {
+      display: block;
+      font-size: 28px;
+      color: #8b4513;
+      margin-bottom: 5px;
+    }
+
+    .stat-card small {
+      color: #68401f;
+      font-weight: 600;
+    }
+
+    .visual-card {
+      position: relative;
+      padding: 34px;
+      border-radius: 32px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(122, 62, 18, 0.14);
+      box-shadow: 0 30px 70px rgba(102, 55, 12, 0.2);
+      overflow: hidden;
+    }
+
+    .visual-card::before {
+      content: "";
+      position: absolute;
+      width: 260px;
+      height: 260px;
+      right: -80px;
+      top: -80px;
+      background: rgba(184, 107, 28, 0.22);
+      border-radius: 50%;
+    }
+
+    .baklava {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: grid;
+      place-items: center;
+    }
+
+    .diamond {
+      width: 230px;
+      height: 230px;
+      background: linear-gradient(145deg, #e2a94f, #b86b1c);
+      transform: rotate(45deg);
+      border-radius: 28px;
+      box-shadow: inset 0 0 0 10px rgba(255,255,255,0.14), 0 22px 45px rgba(80, 42, 11, 0.28);
+      position: relative;
+    }
+
+    .diamond::before,
+    .diamond::after {
+      content: "";
+      position: absolute;
+      inset: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 240, 188, 0.6);
+      border-radius: 999px;
+    }
+
+    .diamond::before {
+      width: 24px;
+      height: 24px;
+      box-shadow: 48px 0 0 rgba(255, 240, 188, 0.55), -48px 0 0 rgba(255, 240, 188, 0.55), 0 48px 0 rgba(255, 240, 188, 0.55), 0 -48px 0 rgba(255, 240, 188, 0.55);
+    }
+
+    .quiz-card {
+      position: absolute;
+      bottom: 28px;
+      left: 28px;
+      right: 28px;
+      padding: 22px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: 0 18px 30px rgba(70, 38, 12, 0.15);
+    }
+
+    .quiz-card h3 {
+      color: #3a200f;
+      margin-bottom: 10px;
+      font-size: 22px;
+    }
+
+    .quiz-card p {
+      color: #6b4728;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    .progress {
+      width: 100%;
+      height: 10px;
+      border-radius: 20px;
+      background: #f1d9b5;
+      overflow: hidden;
+    }
+
+    .progress span {
+      display: block;
+      height: 100%;
+      width: 72%;
+      background: #8b4513;
+      border-radius: inherit;
+    }
+
+    .rules {
+      padding: 70px 8%;
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 36px;
+      margin-bottom: 14px;
+      color: #3a200f;
+    }
+
+    .section-text {
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto 38px;
+      color: #68401f;
+      line-height: 1.7;
+      font-size: 17px;
+    }
+
+    .rule-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+
+    .rule-item {
+      padding: 28px;
+      border-radius: 24px;
+      background: #fffaf0;
+      border: 1px solid rgba(122, 62, 18, 0.12);
+      box-shadow: 0 16px 30px rgba(102, 55, 12, 0.08);
+    }
+
+    .rule-item .icon {
+      font-size: 34px;
+      margin-bottom: 14px;
+    }
+
+    .rule-item h3 {
+      margin-bottom: 10px;
+      color: #7a3e12;
+    }
+
+    .rule-item p {
+      color: #68401f;
+      line-height: 1.6;
+    }
+
+    .login-section {
+      padding: 80px 8%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(244,208,143,0.4));
+    }
+
+    .login-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 36px;
+      align-items: center;
+    }
+
+    .login-info {
+      padding: 20px;
+    }
+
+    .login-badge {
+      display: inline-block;
+      padding: 9px 16px;
+      background: rgba(139, 69, 19, 0.12);
+      color: #7a3e12;
+      border-radius: 999px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+
+    .login-info h2 {
+      font-size: 42px;
+      line-height: 1.15;
+      color: #3a200f;
+      margin-bottom: 16px;
+    }
+
+    .login-info p {
+      max-width: 560px;
+      font-size: 18px;
+      line-height: 1.7;
+      color: #68401f;
+    }
+
+    .login-form {
+      padding: 34px;
+      border-radius: 28px;
+      background: rgba(255, 250, 240, 0.9);
+      border: 1px solid rgba(122, 62, 18, 0.14);
+      box-shadow: 0 24px 55px rgba(102, 55, 12, 0.14);
+    }
+
+    .login-form h3 {
+      font-size: 30px;
+      color: #3a200f;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .login-form label {
+      display: block;
+      color: #5d3b20;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .login-form input[type="text"],
+    .login-form input[type="password"] {
+      width: 100%;
+      padding: 15px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(122, 62, 18, 0.22);
+      background: #fff;
+      color: #3a200f;
+      font-size: 16px;
+      outline: none;
+      margin-bottom: 18px;
+      transition: 0.3s;
+    }
+
+    .login-form input:focus {
+      border-color: #8b4513;
+      box-shadow: 0 0 0 4px rgba(139, 69, 19, 0.12);
+    }
+
+    .form-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin: 4px 0 22px;
+      font-size: 14px;
+    }
+
+    .remember {
+      display: flex !important;
+      align-items: center;
+      gap: 8px;
+      margin: 0 !important;
+      font-weight: 700 !important;
+    }
+
+    .form-options a {
+      color: #8b4513;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 15px;
+      border-radius: 14px;
+      border: none;
+      background: #8b4513;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 14px 26px rgba(139, 69, 19, 0.24);
+      transition: 0.3s;
+    }
+
+    .login-btn:hover {
+      background: #6f340d;
+      transform: translateY(-2px);
+    }
+
+    .login-message {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 800;
+      min-height: 20px;
+    }
+
+    .login-message.success {
+      color: #1f7a34;
+    }
+
+    .login-message.error {
+      color: #b42318;
+    }
+
+    .login-note {
+      margin-top: 12px;
+      text-align: center;
+      color: #7a3e12;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .dashboard-page {
+      display: none;
+      padding: 80px 8%;
+      background: #fffaf0;
+    }
+
+    .dashboard-header {
+      max-width: 1100px;
+      margin: 0 auto 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .dashboard-badge {
+      display: inline-block;
+      padding: 9px 16px;
+      background: rgba(139, 69, 19, 0.12);
+      color: #7a3e12;
+      border-radius: 999px;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
+    .dashboard-header h2 {
+      font-size: 42px;
+      color: #3a200f;
+      margin-bottom: 10px;
+    }
+
+    .dashboard-header p {
+      color: #68401f;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    .logout-btn {
+      padding: 13px 24px;
+      border-radius: 14px;
+      border: none;
+      background: #8b4513;
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 12px 22px rgba(139, 69, 19, 0.22);
+    }
+
+    .dashboard-grid {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+
+    .dashboard-card {
+      padding: 28px;
+      border-radius: 24px;
+      background: #ffffff;
+      border: 1px solid rgba(122, 62, 18, 0.12);
+      box-shadow: 0 16px 30px rgba(102, 55, 12, 0.08);
+    }
+
+    .dashboard-card h3 {
+      color: #7a3e12;
+      margin-bottom: 12px;
+    }
+
+    .dashboard-card strong {
+      display: block;
+      font-size: 34px;
+      color: #3a200f;
+      margin-bottom: 8px;
+    }
+
+    .dashboard-card p {
+      color: #68401f;
+      line-height: 1.5;
+    }
+
+    footer {
+      text-align: center;
+      padding: 26px;
+      color: #68401f;
+      font-weight: 600;
+    }
+
+    @media (max-width: 900px) {
+      header {
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      nav a {
+        margin: 0 10px;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+
+      .subtitle {
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .buttons,
+      .stats {
+        justify-content: center;
+      }
+
+      .rule-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .login-container {
+        grid-template-columns: 1fr;
+      }
+
+      .login-info {
+        text-align: center;
+      }
+
+      .login-info p {
+        margin: 0 auto;
+      }
+
+      .dashboard-header {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"><span>◆</span> Paxlava Quiz</div>
+    <nav>
+      <a href="#home">Ana səhifə</a>
+      <a href="#rules">Qaydalar</a>
+      <a href="#scores">Ballar</a>
+      <a href="#dashboard" onclick="return checkProtectedPage(event)">Dashboard</a>
+      <a href="#login">Giriş</a>
+    </nav>
+  </header>
+
+  <main id="home" class="hero">
+    <section>
+      <div class="badge">Azərbaycan üslubunda intellektual oyun</div>
+      <h1>Paxlava dadında <span class="highlight">Quiz</span> yarışması</h1>
+      <p class="subtitle">
+        Komandalar suallara cavab verir, admin balları əlavə edir və iştirakçılar nəticələri canlı şəkildə izləyirlər.
+        Sadə, sürətli və əyləncəli quiz platforması.
+      </p>
+
+      <div class="buttons">
+        <a class="btn btn-primary" href="#start">Oyuna başla</a>
+        <a class="btn btn-secondary" href="#rules">Qaydaları gör</a>
+      </div>
+
+      <div class="stats" id="scores">
+        <div class="stat-card">
+          <strong>12</strong>
+          <small>Komanda</small>
+        </div>
+        <div class="stat-card">
+          <strong>30</strong>
+          <small>Sual</small>
+        </div>
+        <div class="stat-card">
+          <strong>100%</strong>
+          <small>Əyləncə</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="visual-card" aria-label="Paxlava Quiz visual">
+      <div class="baklava">
+        <div class="diamond"></div>
+      </div>
+      <div class="quiz-card">
+        <h3>Növbəti sual hazırdır</h3>
+        <p>Komandanı seç, cavabı yoxla və balı dərhal əlavə et.</p>
+        <div class="progress"><span></span></div>
+      </div>
+    </section>
+  </main>
+
+  <section id="rules" class="rules">
+    <h2 class="section-title">Oyun necə işləyir?</h2>
+    <p class="section-text">
+      Paxlava Quiz komandalar arasında keçirilən sual-cavab oyunudur. Admin nəticələri idarə edir,
+      istifadəçilər isə komandaların ballarını və ümumi vəziyyəti izləyir.
+    </p>
+
+    <div class="rule-grid">
+      <div class="rule-item">
+        <div class="icon">👥</div>
+        <h3>Komandalar əlavə edilir</h3>
+        <p>Hər komanda üçün ad yaradılır və oyun ərzində həmin komandaya bal yazılır.</p>
+      </div>
+      <div class="rule-item">
+        <div class="icon">❓</div>
+        <h3>Suallar cavablandırılır</h3>
+        <p>Komandalar növbə ilə və ya eyni anda suallara cavab verərək xal qazanırlar.</p>
+      </div>
+      <div class="rule-item">
+        <div class="icon">🏆</div>
+        <h3>Nəticələr izlənilir</h3>
+        <p>Ballar hesablanır və lider komanda dashboard üzərindən görünür.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="login" class="login-section">
+    <div class="login-container">
+      <div class="login-info">
+        <span class="login-badge">Təhlükəsiz giriş</span>
+        <h2>Paxlava Quiz hesabına daxil ol</h2>
+        <p>
+          Admin komanda və balları idarə edə bilər. İstifadəçilər isə nəticələri və dashboard məlumatlarını izləyə bilərlər.
+        </p>
+      </div>
+
+      <form class="login-form" onsubmit="loginUser(event)">
+        <h3>Giriş</h3>
+
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" placeholder="Username daxil edin" required />
+
+        <label for="password">Parol</label>
+        <input type="password" id="password" name="password" placeholder="Parol daxil edin" required />
+
+        <div class="form-options">
+          <label class="remember">
+            <input type="checkbox" name="remember" />
+            Məni yadda saxla
+          </label>
+          <a href="#">Parolu unutmusunuz?</a>
+        </div>
+
+        <button type="submit" class="login-btn">Daxil ol</button>
+
+        <p id="loginMessage" class="login-message"></p>
+        <p class="login-note">Demo: admin / admin123 və ya user / user123</p>
+      </form>
+    </div>
+  </section>
+
+  <section id="dashboard" class="dashboard-page">
+    <div class="dashboard-header">
+      <div>
+        <span class="dashboard-badge">Qorunan səhifə</span>
+        <h2>Dashboard</h2>
+        <p>Bu səhifəyə yalnız username və parol ilə giriş etdikdən sonra keçmək mümkündür.</p>
+      </div>
+      <button class="logout-btn" onclick="logoutUser()">Çıxış</button>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="dashboard-card">
+        <h3>Komandalar</h3>
+        <strong>12</strong>
+        <p>Oyunda iştirak edən komandalar</p>
+      </div>
+      <div class="dashboard-card">
+        <h3>Ümumi suallar</h3>
+        <strong>30</strong>
+        <p>Quiz üzrə hazırlanmış suallar</p>
+      </div>
+      <div class="dashboard-card">
+        <h3>Lider komanda</h3>
+        <strong>Team A</strong>
+        <p>Hazırda ən yüksək bal toplayan komanda</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    © 2026 Paxlava Quiz. Bütün hüquqlar qorunur.
+  </footer>
+
+  <script>
+    const users = {
+      admin: "admin123",
+      user: "user123"
+    };
+
+    function loginUser(event) {
+      event.preventDefault();
+
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const message = document.getElementById("loginMessage");
+
+      if (users[username] && users[username] === password) {
+        localStorage.setItem("paxlavaQuizLoggedIn", "true");
+        localStorage.setItem("paxlavaQuizUser", username);
+        message.textContent = "Giriş uğurludur. Dashboard səhifəsinə yönləndirilirsiniz...";
+        message.className = "login-message success";
+
+        setTimeout(() => {
+          window.location.hash = "dashboard";
+          showProtectedPage();
+        }, 500);
+      } else {
+        message.textContent = "Username və ya parol yanlışdır.";
+        message.className = "login-message error";
+      }
+    }
+
+    function isLoggedIn() {
+      return localStorage.getItem("paxlavaQuizLoggedIn") === "true";
+    }
+
+    function checkProtectedPage(event) {
+      if (!isLoggedIn()) {
+        event.preventDefault();
+        window.location.hash = "login";
+        const message = document.getElementById("loginMessage");
+        if (message) {
+          message.textContent = "Dashboard səhifəsinə keçmək üçün əvvəlcə giriş edin.";
+          message.className = "login-message error";
+        }
+        return false;
+      }
+      showProtectedPage();
+      return true;
+    }
+
+    function showProtectedPage() {
+      const dashboard = document.getElementById("dashboard");
+      if (dashboard) {
+        dashboard.style.display = isLoggedIn() ? "block" : "none";
+      }
+    }
+
+    function logoutUser() {
+      localStorage.removeItem("paxlavaQuizLoggedIn");
+      localStorage.removeItem("paxlavaQuizUser");
+      showProtectedPage();
+      window.location.hash = "login";
+    }
+
+    window.addEventListener("load", () => {
+      showProtectedPage();
+
+      if (window.location.hash === "#dashboard" && !isLoggedIn()) {
+        window.location.hash = "login";
+        const message = document.getElementById("loginMessage");
+        if (message) {
+          message.textContent = "Dashboard səhifəsinə keçmək üçün əvvəlcə giriş edin.";
+          message.className = "login-message error";
+        }
+      }
+    });
+
+    window.addEventListener("hashchange", () => {
+      if (window.location.hash === "#dashboard" && !isLoggedIn()) {
+        window.location.hash = "login";
+      }
+    });
+  </script>
+</body>
+</html>
