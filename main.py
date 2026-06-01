@@ -504,9 +504,9 @@ def admin():
                         <div><label>Tur 6</label><input type="number" name="round_6" placeholder="0"></div>
                         <div><label>Tur 7</label><input type="number" name="round_7" placeholder="0"></div>
                         <div><label>Tur 8</label><input type="number" name="round_8" placeholder="0"></div>
-                        <div><label>Tur 8</label><input type="number" name="round_8(1)" placeholder="0"></div>
-                        <div><label>Tur 8</label><input type="number" name="round_8(2)" placeholder="0"></div>      
-                        <div><label>Tur 8</label><input type="number" name="round_8(3)" placeholder="0"></div>
+                        <div><label>Tur 8(1)</label><input type="number" name="round_8(1)" placeholder="0"></div>
+                        <div><label>Tur 8(2)</label><input type="number" name="round_8(2)" placeholder="0"></div>      
+                        <div><label>Tur 8(3)</label><input type="number" name="round_8(3)" placeholder="0"></div>
                     </div>
 
                     <button class="btn" type="submit">Xalları əlavə et</button>
@@ -646,9 +646,9 @@ def edit_result(game_date, result_id):
                     <div><label>Tur 6</label><input type="number" name="round_6" value="{rounds.get('round_6', 0)}"></div>
                     <div><label>Tur 7</label><input type="number" name="round_7" value="{rounds.get('round_7', 0)}"></div>
                     <div><label>Tur 8</label><input type="number" name="round_8" value="{rounds.get('round_8', 0)}"></div>
-                    <div><label>Tur 8</label><input type="number" name="round_8(1)" value="{rounds.get('round_8(1)', 0)}"></div>
-                    <div><label>Tur 8</label><input type="number" name="round_8(2)" value="{rounds.get('round_8(2)', 0)}"></div>
-                    <div><label>Tur 8</label><input type="number" name="round_8(3)" value="{rounds.get('round_8(3)', 0)}"></div>
+                    <div><label>Tur 8(1)</label><input type="number" name="round_8(1)" value="{rounds.get('round_8(1)', 0)}"></div>
+                    <div><label>Tur 8(2)</label><input type="number" name="round_8(2)" value="{rounds.get('round_8(2)', 0)}"></div>
+                    <div><label>Tur 8(3)</label><input type="number" name="round_8(3)" value="{rounds.get('round_8(3)', 0)}"></div>
                 </div>
                 <button class="btn" type="submit">Yadda saxla</button>
                 <a class="btn btn-secondary" href="/admin?game_date={game_date}">Geri qayıt</a>
