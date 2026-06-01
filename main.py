@@ -15,6 +15,20 @@ users = {
 DATA_FILE = "games.json"
 TEAMS_FILE = "teams_list.json"
 
+ROUND_FIELDS = [
+    ("round_1", "Tur 1"),
+    ("round_2", "Tur 2"),
+    ("round_3", "Tur 3"),
+    ("round_4", "Tur 4"),
+    ("round_5", "Tur 5"),
+    ("round_6", "Tur 6"),
+    ("round_7", "Tur 7"),
+    ("round_8", "Tur 8"),
+    ("round_8_1", "Tur 8(1)"),
+    ("round_8_2", "Tur 8(2)"),
+    ("round_8_3", "Tur 8(3)"),
+]
+
 
 def ensure_file(path, default_data):
     if not os.path.exists(path):
@@ -60,8 +74,19 @@ def get_game_by_date(games, game_date):
     return next((game for game in games if game.get("date") == game_date), None)
 
 
+def get_round_value(rounds, field):
+    legacy_map = {
+        "round_8_1": "round_8(1)",
+        "round_8_2": "round_8(2)",
+        "round_8_3": "round_8(3)",
+    }
+    if field in rounds:
+        return rounds.get(field, 0)
+    return rounds.get(legacy_map.get(field, ""), 0)
+
+
 def calculate_total(rounds):
-    return sum(int(rounds.get(f"round_{i}", 0) or 0) for i in range(1, 9))
+    return sum(int(get_round_value(rounds, field) or 0) for field, _ in ROUND_FIELDS)
 
 
 def login_required():
@@ -276,7 +301,7 @@ def home():
                 </div>
                 <div class="hero-features">
                     <div class="feature-box"><h4>Komanda Qur</h4><p>Dostlarınla birlikdə yarış və qalib ol.</p></div>
-                    <div class="feature-box"><h4>8 Tur</h4><p>Hər tur üzrə xal yazılır və toplam avtomatik hesablanır.</p></div>
+                    <div class="feature-box"><h4>8 Tur</h4><p>Əsas turlar və əlavə 8-ci tur xalları avtomatik hesablanır.</p></div>
                     <div class="feature-box"><h4>Canlı Reytinq</h4><p>Bütün komandaları tarix üzrə izləyin.</p></div>
                 </div>
             </div>
@@ -292,7 +317,7 @@ def home():
         <div class="info-card"><h3>Bilik Yarışı</h3><p>Müxtəlif kateqoriyalar üzrə hazırlanmış suallarla özünü yoxla.</p></div>
         <div class="info-card"><h3>Komanda Ruhu</h3><p>Dostlarınla komanda qur və birlikdə zirvəyə yüksəl.</p></div>
         <div class="info-card"><h3>Dinamik Sistem</h3><p>Admin paneli ilə xallar canlı olaraq yenilənir.</p></div>
-        <div class="info-card"><h3>Avtomatik Toplam</h3><p>8 turun xalı avtomatik toplanır və nəticə göstərilir.</p></div>
+        <div class="info-card"><h3>Avtomatik Toplam</h3><p>Bütün turların xalı avtomatik toplanır və nəticə göstərilir.</p></div>
     </section>
     """
     return render_template_string(layout(content))
@@ -373,14 +398,17 @@ def scores():
             <td>{index}</td>
             <td>{item['date']}</td>
             <td>{item['team_name']}</td>
-            <td>{item['rounds'].get('round_1', 0)}</td>
-            <td>{item['rounds'].get('round_2', 0)}</td>
-            <td>{item['rounds'].get('round_3', 0)}</td>
-            <td>{item['rounds'].get('round_4', 0)}</td>
-            <td>{item['rounds'].get('round_5', 0)}</td>
-            <td>{item['rounds'].get('round_6', 0)}</td>
-            <td>{item['rounds'].get('round_7', 0)}</td>
-            <td>{item['rounds'].get('round_8', 0)}</td>
+            <td>{get_round_value(item['rounds'], 'round_1')}</td>
+            <td>{get_round_value(item['rounds'], 'round_2')}</td>
+            <td>{get_round_value(item['rounds'], 'round_3')}</td>
+            <td>{get_round_value(item['rounds'], 'round_4')}</td>
+            <td>{get_round_value(item['rounds'], 'round_5')}</td>
+            <td>{get_round_value(item['rounds'], 'round_6')}</td>
+            <td>{get_round_value(item['rounds'], 'round_7')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8_1')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8_2')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8_3')}</td>
             <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>
         </tr>
         """
@@ -388,7 +416,7 @@ def scores():
     ])
 
     if not rows:
-        rows = '<tr><td colspan="12">Hələ nəticə əlavə edilməyib.</td></tr>'
+        rows = '<tr><td colspan="15">Hələ nəticə əlavə edilməyib.</td></tr>'
 
     filter_text = "Seçilmiş tarix üzrə nəticələr göstərilir." if selected_date else "Bütün tarixlər üzrə indiyə kimi əlavə edilmiş nəticələr göstərilir."
 
@@ -410,7 +438,7 @@ def scores():
                     <thead>
                         <tr>
                             <th>#</th><th>Tarix</th><th>Komanda</th><th>Tur 1</th><th>Tur 2</th><th>Tur 3</th><th>Tur 4</th>
-                            <th>Tur 5</th><th>Tur 6</th><th>Tur 7</th><th>Tur 8</th><th>Toplam</th>
+                            <th>Tur 5</th><th>Tur 6</th><th>Tur 7</th><th>Tur 8</th><th>Tur 8(1)</th><th>Tur 8(2)</th><th>Tur 8(3)</th><th>Toplam</th>
                         </tr>
                     </thead>
                     <tbody>{rows}</tbody>
@@ -444,17 +472,17 @@ def admin():
         f"""
         <tr>
             <td>{item['team_name']}</td>
-            <td>{item['rounds'].get('round_1', 0)}</td>
-            <td>{item['rounds'].get('round_2', 0)}</td>
-            <td>{item['rounds'].get('round_3', 0)}</td>
-            <td>{item['rounds'].get('round_4', 0)}</td>
-            <td>{item['rounds'].get('round_5', 0)}</td>
-            <td>{item['rounds'].get('round_6', 0)}</td>
-            <td>{item['rounds'].get('round_7', 0)}</td>
-            <td>{item['rounds'].get('round_8', 0)}</td>
-            <td>{item['rounds'].get('round_8(1)', 0)}</td>
-            <td>{item['rounds'].get('round_8(2)', 0)}</td>
-            <td>{item['rounds'].get('round_8(3)', 0)}</td>
+            <td>{get_round_value(item['rounds'], 'round_1')}</td>
+            <td>{get_round_value(item['rounds'], 'round_2')}</td>
+            <td>{get_round_value(item['rounds'], 'round_3')}</td>
+            <td>{get_round_value(item['rounds'], 'round_4')}</td>
+            <td>{get_round_value(item['rounds'], 'round_5')}</td>
+            <td>{get_round_value(item['rounds'], 'round_6')}</td>
+            <td>{get_round_value(item['rounds'], 'round_7')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8_1')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8_2')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8_3')}</td>
             <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>
             <td>
                 <div class="actions">
@@ -470,7 +498,7 @@ def admin():
     ])
 
     if not rows:
-        rows = '<tr><td colspan="11">Seçilmiş tarix üçün hələ xal əlavə edilməyib.</td></tr>'
+        rows = '<tr><td colspan="14">Seçilmiş tarix üçün hələ xal əlavə edilməyib.</td></tr>'
 
     content = f"""
     <main class="container">
@@ -504,9 +532,9 @@ def admin():
                         <div><label>Tur 6</label><input type="number" name="round_6" placeholder="0"></div>
                         <div><label>Tur 7</label><input type="number" name="round_7" placeholder="0"></div>
                         <div><label>Tur 8</label><input type="number" name="round_8" placeholder="0"></div>
-                        <div><label>Tur 8(1)</label><input type="number" name="round_8(1)" placeholder="0"></div>
-                        <div><label>Tur 8(2)</label><input type="number" name="round_8(2)" placeholder="0"></div>      
-                        <div><label>Tur 8(3)</label><input type="number" name="round_8(3)" placeholder="0"></div>
+                        <div><label>Tur 8(1)</label><input type="number" name="round_8_1" placeholder="0"></div>
+                        <div><label>Tur 8(2)</label><input type="number" name="round_8_2" placeholder="0"></div>
+                        <div><label>Tur 8(3)</label><input type="number" name="round_8_3" placeholder="0"></div>
                     </div>
 
                     <button class="btn" type="submit">Xalları əlavə et</button>
@@ -515,7 +543,7 @@ def admin():
 
             <div class="card">
                 <h2>Admin page</h2>
-                <p>Tarix seçin, həmin tarix üzrə komandaların 8 tur nəticələrini idarə edin.</p>
+                <p>Tarix seçin, həmin tarix üzrə komandaların bütün tur nəticələrini idarə edin.</p>
 
                 <form method="GET" action="/admin" style="margin-top: 20px; max-width: 360px;">
                     <label>Tarix filteri</label>
@@ -583,10 +611,18 @@ def add_result():
     if existing:
         rounds = existing.get("rounds", {})
     else:
-        rounds = {f"round_{i}": 0 for i in range(1, 9)}
+        rounds = {field: 0 for field, _ in ROUND_FIELDS}
 
-    for i in range(1, 9):
-        field_name = f"round_{i}"
+    legacy_map = {
+        "round_8_1": "round_8(1)",
+        "round_8_2": "round_8(2)",
+        "round_8_3": "round_8(3)",
+    }
+    for new_key, old_key in legacy_map.items():
+        if new_key not in rounds and old_key in rounds:
+            rounds[new_key] = rounds.get(old_key, 0)
+
+    for field_name, _ in ROUND_FIELDS:
         raw_value = request.form.get(field_name, "").strip()
 
         # Boş buraxılan tur əvvəlki dəyəri saxlayır.
@@ -626,7 +662,10 @@ def edit_result(game_date, result_id):
         return redirect(url_for("admin", game_date=game_date))
 
     if request.method == "POST":
-        result["rounds"] = {f"round_{i}": int(request.form.get(f"round_{i}", 0) or 0) for i in range(1, 9)}
+        rounds = result.get("rounds", {})
+        for field_name, _ in ROUND_FIELDS:
+            rounds[field_name] = int(request.form.get(field_name, 0) or 0)
+        result["rounds"] = rounds
         save_games(games)
         return redirect(url_for("admin", game_date=game_date))
 
@@ -638,17 +677,17 @@ def edit_result(game_date, result_id):
             <p>Tarix: {game_date} | Komanda: {result['team_name']}</p>
             <form method="POST">
                 <div class="round-grid">
-                    <div><label>Tur 1</label><input type="number" name="round_1" value="{rounds.get('round_1', 0)}"></div>
-                    <div><label>Tur 2</label><input type="number" name="round_2" value="{rounds.get('round_2', 0)}"></div>
-                    <div><label>Tur 3</label><input type="number" name="round_3" value="{rounds.get('round_3', 0)}"></div>
-                    <div><label>Tur 4</label><input type="number" name="round_4" value="{rounds.get('round_4', 0)}"></div>
-                    <div><label>Tur 5</label><input type="number" name="round_5" value="{rounds.get('round_5', 0)}"></div>
-                    <div><label>Tur 6</label><input type="number" name="round_6" value="{rounds.get('round_6', 0)}"></div>
-                    <div><label>Tur 7</label><input type="number" name="round_7" value="{rounds.get('round_7', 0)}"></div>
-                    <div><label>Tur 8</label><input type="number" name="round_8" value="{rounds.get('round_8', 0)}"></div>
-                    <div><label>Tur 8(1)</label><input type="number" name="round_8(1)" value="{rounds.get('round_8(1)', 0)}"></div>
-                    <div><label>Tur 8(2)</label><input type="number" name="round_8(2)" value="{rounds.get('round_8(2)', 0)}"></div>
-                    <div><label>Tur 8(3)</label><input type="number" name="round_8(3)" value="{rounds.get('round_8(3)', 0)}"></div>
+                    <div><label>Tur 1</label><input type="number" name="round_1" value="{get_round_value(rounds, 'round_1')}"></div>
+                    <div><label>Tur 2</label><input type="number" name="round_2" value="{get_round_value(rounds, 'round_2')}"></div>
+                    <div><label>Tur 3</label><input type="number" name="round_3" value="{get_round_value(rounds, 'round_3')}"></div>
+                    <div><label>Tur 4</label><input type="number" name="round_4" value="{get_round_value(rounds, 'round_4')}"></div>
+                    <div><label>Tur 5</label><input type="number" name="round_5" value="{get_round_value(rounds, 'round_5')}"></div>
+                    <div><label>Tur 6</label><input type="number" name="round_6" value="{get_round_value(rounds, 'round_6')}"></div>
+                    <div><label>Tur 7</label><input type="number" name="round_7" value="{get_round_value(rounds, 'round_7')}"></div>
+                    <div><label>Tur 8</label><input type="number" name="round_8" value="{get_round_value(rounds, 'round_8')}"></div>
+                    <div><label>Tur 8(1)</label><input type="number" name="round_8_1" value="{get_round_value(rounds, 'round_8_1')}"></div>
+                    <div><label>Tur 8(2)</label><input type="number" name="round_8_2" value="{get_round_value(rounds, 'round_8_2')}"></div>
+                    <div><label>Tur 8(3)</label><input type="number" name="round_8_3" value="{get_round_value(rounds, 'round_8_3')}"></div>
                 </div>
                 <button class="btn" type="submit">Yadda saxla</button>
                 <a class="btn btn-secondary" href="/admin?game_date={game_date}">Geri qayıt</a>
