@@ -452,6 +452,9 @@ def admin():
             <td>{item['rounds'].get('round_6', 0)}</td>
             <td>{item['rounds'].get('round_7', 0)}</td>
             <td>{item['rounds'].get('round_8', 0)}</td>
+            <td>{item['rounds'].get('round_8(1)', 0)}</td>
+            <td>{item['rounds'].get('round_8(2)', 0)}</td>
+            <td>{item['rounds'].get('round_8(3)', 0)}</td>
             <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>
             <td>
                 <div class="actions">
@@ -501,6 +504,9 @@ def admin():
                         <div><label>Tur 6</label><input type="number" name="round_6" placeholder="0"></div>
                         <div><label>Tur 7</label><input type="number" name="round_7" placeholder="0"></div>
                         <div><label>Tur 8</label><input type="number" name="round_8" placeholder="0"></div>
+                        <div><label>Tur 8</label><input type="number" name="round_8(1)" placeholder="0"></div>
+                        <div><label>Tur 8</label><input type="number" name="round_8(2)" placeholder="0"></div>      
+                        <div><label>Tur 8</label><input type="number" name="round_8(3)" placeholder="0"></div>
                     </div>
 
                     <button class="btn" type="submit">Xalları əlavə et</button>
@@ -521,7 +527,7 @@ def admin():
                         <thead>
                             <tr>
                                 <th>Komanda</th><th>Tur 1</th><th>Tur 2</th><th>Tur 3</th><th>Tur 4</th>
-                                <th>Tur 5</th><th>Tur 6</th><th>Tur 7</th><th>Tur 8</th><th>Toplam</th><th>Əməliyyat</th>
+                                <th>Tur 5</th><th>Tur 6</th><th>Tur 7</th><th>Tur 8</th><th>Tur 8(1)</th><th>Tur 8(2)</th><th>Tur 8(3)</th><th>Toplam</th><th>Əməliyyat</th>
                             </tr>
                         </thead>
                         <tbody>{rows}</tbody>
@@ -640,6 +646,9 @@ def edit_result(game_date, result_id):
                     <div><label>Tur 6</label><input type="number" name="round_6" value="{rounds.get('round_6', 0)}"></div>
                     <div><label>Tur 7</label><input type="number" name="round_7" value="{rounds.get('round_7', 0)}"></div>
                     <div><label>Tur 8</label><input type="number" name="round_8" value="{rounds.get('round_8', 0)}"></div>
+                    <div><label>Tur 8</label><input type="number" name="round_8(1)" value="{rounds.get('round_8(1)', 0)}"></div>
+                    <div><label>Tur 8</label><input type="number" name="round_8(2)" value="{rounds.get('round_8(2)', 0)}"></div>
+                    <div><label>Tur 8</label><input type="number" name="round_8(3)" value="{rounds.get('round_8(3)', 0)}"></div>
                 </div>
                 <button class="btn" type="submit">Yadda saxla</button>
                 <a class="btn btn-secondary" href="/admin?game_date={game_date}">Geri qayıt</a>
