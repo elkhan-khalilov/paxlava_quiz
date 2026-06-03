@@ -3,12 +3,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import escape
 from datetime import date
-from html import escape
 import json
 import os
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+
+# App runs behind the nginx reverse proxy; trust forwarded headers for scheme/host.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 # Credentials are configurable via environment variables (with safe local defaults).
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
