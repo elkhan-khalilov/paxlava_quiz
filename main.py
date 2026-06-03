@@ -1,19 +1,30 @@
-from flask import Flask, request, redirect, url_for, session, render_template_string, flash, get_flashed_messages
+from flask import Flask, request, redirect, url_for, session, flash, get_flashed_messages
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
+from markupsafe import escape
 from datetime import date
 import json
 import os
 
 app = Flask(__name__)
-app.secret_key = "change-this-secret-key"
+app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key")
+
+# Tətbiq reverse-proxy (nginx) arxasında işləyir; düzgün sxem/host üçün.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+if os.environ.get("SESSION_COOKIE_SECURE", "").lower() in ("1", "true", "yes"):
+    app.config["SESSION_COOKIE_SECURE"] = True
 
 users = {
-    "admin": {"password": generate_password_hash("admin123"), "role": "admin"},
-    "user": {"password": generate_password_hash("user123"), "role": "user"}
+    "admin": {"password": generate_password_hash(os.environ.get("ADMIN_PASSWORD", "admin123")), "role": "admin"},
+    "user": {"password": generate_password_hash(os.environ.get("USER_PASSWORD", "user123")), "role": "user"}
 }
 
-DATA_FILE = "games.json"
-TEAMS_FILE = "teams_list.json"
+# Məlumat faylları DATA_DIR-də saxlanılır (Docker-də kalıcı volume üçün).
+DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(os.path.abspath(__file__)))
+DATA_FILE = os.path.join(DATA_DIR, "games.json")
+TEAMS_FILE = os.path.join(DATA_DIR, "teams_list.json")
 
 ROUND_FIELDS = [
     ("round_1", "Tur 1"),
@@ -32,6 +43,7 @@ ROUND_FIELDS = [
 
 def ensure_file(path, default_data):
     if not os.path.exists(path):
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w", encoding="utf-8") as file:
             json.dump(default_data, file, ensure_ascii=False, indent=4)
 
@@ -320,7 +332,7 @@ def home():
         <div class="info-card"><h3>Avtomatik Toplam</h3><p>Bütün turların xalı avtomatik toplanır və nəticə göstərilir.</p></div>
     </section>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -355,7 +367,7 @@ def login():
         </div>
     </main>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 @app.route("/logout")
@@ -395,8 +407,8 @@ def scores():
         f"""
         <tr>
             <td>{index}</td>
-            <td>{item['date']}</td>
-            <td>{item['team_name']}</td>
+            <td>{escape(item['date'])}</td>
+            <td>{escape(item['team_name'])}</td>
             <td>{get_round_value(item['rounds'], 'round_1')}</td>
             <td>{get_round_value(item['rounds'], 'round_2')}</td>
             <td>{get_round_value(item['rounds'], 'round_3')}</td>
@@ -408,7 +420,7 @@ def scores():
             <td>{get_round_value(item['rounds'], 'round_8_1')}</td>
             <td>{get_round_value(item['rounds'], 'round_8_2')}</td>
             <td>{get_round_value(item['rounds'], 'round_8_3')}</td>
-            <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>s
+            <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>
         </tr>
         """
         for index, item in enumerate(sorted_results, start=1)
@@ -427,7 +439,7 @@ def scores():
 
             <form method="GET" action="/scores" style="margin-top: 20px; max-width: 420px;">
                 <label>Tarix filteri</label>
-                <input type="date" name="game_date" value="{selected_date}">
+                <input type="date" name="game_date" value="{escape(selected_date)}">
                 <button class="btn" type="submit">Filterlə</button>
                 <a class="btn btn-secondary" href="/scores">Bütün nəticələr</a>
             </form>
@@ -446,7 +458,7 @@ def scores():
         </div>
     </main>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 @app.route("/admin")
@@ -463,14 +475,14 @@ def admin():
     results = selected_game.get("results", []) if selected_game else []
 
     team_options = "".join([
-        f'<option value="{team["id"]}">{team["name"]}</option>'
+        f'<option value="{team["id"]}">{escape(team["name"])}</option>'
         for team in teams_list
     ])
 
     rows = "".join([
         f"""
         <tr>
-            <td>{item['team_name']}</td>
+            <td>{escape(item['team_name'])}</td>
             <td>{get_round_value(item['rounds'], 'round_1')}</td>
             <td>{get_round_value(item['rounds'], 'round_2')}</td>
             <td>{get_round_value(item['rounds'], 'round_3')}</td>
@@ -485,8 +497,8 @@ def admin():
             <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>
             <td>
                 <div class="actions">
-                    <a class="small-btn secondary" href="/admin/date/{selected_date}/result/{item['id']}/edit">Editlə</a>
-                    <form method="POST" action="/admin/date/{selected_date}/result/{item['id']}/delete" onsubmit="return confirm('Bu nəticəni silmək istədiyinizə əminsiniz?')">
+                    <a class="small-btn secondary" href="/admin/date/{escape(selected_date)}/result/{item['id']}/edit">Editlə</a>
+                    <form method="POST" action="/admin/date/{escape(selected_date)}/result/{item['id']}/delete" onsubmit="return confirm('Bu nəticəni silmək istədiyinizə əminsiniz?')">
                         <button class="small-btn danger" type="submit">Sil</button>
                     </form>
                 </div>
@@ -515,7 +527,7 @@ def admin():
                 <h2>Xal əlavə et</h2>
                 <form method="POST" action="/admin/result/add">
                     <label>Tarix seç</label>
-                    <input type="date" name="game_date" value="{selected_date}" required>
+                    <input type="date" name="game_date" value="{escape(selected_date)}" required>
 
                     <label>Komanda seç</label>
                     <select name="team_id" required>
@@ -546,7 +558,7 @@ def admin():
 
                 <form method="GET" action="/admin" style="margin-top: 20px; max-width: 360px;">
                     <label>Tarix filteri</label>
-                    <input type="date" name="game_date" value="{selected_date}" onchange="this.form.submit()">
+                    <input type="date" name="game_date" value="{escape(selected_date)}" onchange="this.form.submit()">
                 </form>
 
                 <div class="table-wrap">
@@ -564,7 +576,7 @@ def admin():
         </div>
     </main>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 @app.route("/admin/team-name/add", methods=["POST"])
@@ -673,7 +685,7 @@ def edit_result(game_date, result_id):
     <main class="container">
         <div class="card" style="max-width: 620px; margin: 0 auto;">
             <h2>Nəticəni editlə</h2>
-            <p>Tarix: {game_date} | Komanda: {result['team_name']}</p>
+            <p>Tarix: {escape(game_date)} | Komanda: {escape(result['team_name'])}</p>
             <form method="POST">
                 <div class="round-grid">
                     <div><label>Tur 1</label><input type="number" name="round_1" value="{get_round_value(rounds, 'round_1')}"></div>
@@ -689,12 +701,12 @@ def edit_result(game_date, result_id):
                     <div><label>Tur 8(3)</label><input type="number" name="round_8_3" value="{get_round_value(rounds, 'round_8_3')}"></div>
                 </div>
                 <button class="btn" type="submit">Yadda saxla</button>
-                <a class="btn btn-secondary" href="/admin?game_date={game_date}">Geri qayıt</a>
+                <a class="btn btn-secondary" href="/admin?game_date={escape(game_date)}">Geri qayıt</a>
             </form>
         </div>
     </main>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 @app.route("/admin/date/<game_date>/result/<int:result_id>/delete", methods=["POST"])
@@ -752,8 +764,9 @@ def about():
         </div>
     </section>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes")
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=debug)
