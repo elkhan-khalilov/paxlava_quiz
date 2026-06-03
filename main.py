@@ -1,5 +1,7 @@
 from flask import Flask, request, redirect, url_for, session, flash, get_flashed_messages
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
+from markupsafe import escape
 from datetime import date
 from html import escape
 import json
