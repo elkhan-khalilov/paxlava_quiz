@@ -1,0 +1,44 @@
+# Production stack: Caddy terminates HTTPS for your subdomain and proxies to
+# the app. The app itself is NOT exposed to the host — only reachable via Caddy.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Required variables (put them in .env): DOMAIN, SECRET_KEY, ADMIN_PASSWORD,
+# USER_PASSWORD.
+
+services:
+  web:
+    build: .
+    image: paxlava-quiz
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      USER_USERNAME: ${USER_USERNAME:-user}
+      USER_PASSWORD: ${USER_PASSWORD:?set USER_PASSWORD in .env}
+      DATA_DIR: /app/data
+    volumes:
+      - quiz_data:/app/data
+    expose:
+      - "5000"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env, e.g. quiz.dcl.az}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  quiz_data:
+  caddy_data:
+  caddy_config:

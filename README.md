@@ -35,6 +35,41 @@ docker run -d -p 5000:5000 \
   paxlava-quiz
 ```
 
+## Production: subdomain + avtomatik HTTPS (VPS)
+
+Tətbiqi `quiz.dcl.az` kimi subdomain-də Let's Encrypt SSL ilə yayımlamaq üçün
+`docker-compose.prod.yml` Caddy reverse proxy-ni qaldırır (sertifikatlar
+avtomatik alınır və yenilənir).
+
+**1. DNS** — domen panelində (dcl.az) A record əlavə et:
+
+```
+quiz   A   <VPS_PUBLIC_IP>
+```
+
+**2. Firewall** — 80 və 443 portlarını aç (SSL üçün lazımdır):
+
+```bash
+sudo ufw allow 80,443/tcp
+```
+
+**3. `.env` hazırla** (serverdə):
+
+```bash
+cp .env.example .env
+# DOMAIN=quiz.dcl.az, SECRET_KEY (random), ADMIN_PASSWORD, USER_PASSWORD
+```
+
+**4. İşə sal:**
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Bir-iki dəqiqəyə `https://quiz.dcl.az` hazırdır. Loglar: `docker compose -f docker-compose.prod.yml logs -f caddy`.
+
+> Qeyd: SSL sertifikatı yalnız DNS yayıldıqdan **sonra** alınır. `dig quiz.dcl.az +short` serverin IP-sini qaytarmalıdır.
+
 ## Lokal işə salma (development)
 
 ```bash
