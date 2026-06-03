@@ -352,7 +352,6 @@ def login():
                 <input type="password" name="password" placeholder="Parol daxil edin" required>
                 <button class="btn" type="submit">Daxil ol</button>
             </form>
-            <p style="margin-top: 18px;"><b>Demo:</b> admin / admin123 və ya user / user123</p>
         </div>
     </main>
     """
