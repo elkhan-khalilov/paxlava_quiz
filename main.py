@@ -1,19 +1,28 @@
-from flask import Flask, request, redirect, url_for, session, render_template_string, flash, get_flashed_messages
+from flask import Flask, request, redirect, url_for, session, flash, get_flashed_messages
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
+from html import escape
 import json
 import os
 
 app = Flask(__name__)
-app.secret_key = "change-this-secret-key"
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+
+# Credentials are configurable via environment variables (with safe local defaults).
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
+USER_USERNAME = os.environ.get("USER_USERNAME", "user")
+USER_PASSWORD = os.environ.get("USER_PASSWORD", "user123")
 
 users = {
-    "admin": {"password": generate_password_hash("admin123"), "role": "admin"},
-    "user": {"password": generate_password_hash("user123"), "role": "user"}
+    ADMIN_USERNAME: {"password": generate_password_hash(ADMIN_PASSWORD), "role": "admin"},
+    USER_USERNAME: {"password": generate_password_hash(USER_PASSWORD), "role": "user"},
 }
 
-DATA_FILE = "games.json"
-TEAMS_FILE = "teams_list.json"
+# Data directory is configurable so it can be mounted as a volume in Docker.
+DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(os.path.abspath(__file__)))
+DATA_FILE = os.path.join(DATA_DIR, "games.json")
+TEAMS_FILE = os.path.join(DATA_DIR, "teams_list.json")
 
 ROUND_FIELDS = [
     ("round_1", "Tur 1"),
@@ -32,6 +41,7 @@ ROUND_FIELDS = [
 
 def ensure_file(path, default_data):
     if not os.path.exists(path):
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w", encoding="utf-8") as file:
             json.dump(default_data, file, ensure_ascii=False, indent=4)
 
@@ -46,8 +56,20 @@ def load_json(path, default_data):
 
 
 def save_json(path, data):
-    with open(path, "w", encoding="utf-8") as file:
+    # Write to a temp file then atomically replace, so a crash or concurrent
+    # read can never observe a half-written (corrupt) JSON file.
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp_path = f"{path}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as file:
         json.dump(data, file, ensure_ascii=False, indent=4)
+    os.replace(tmp_path, path)
+
+
+def to_int(value, default=0):
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
 
 
 def load_games():
@@ -86,7 +108,7 @@ def get_round_value(rounds, field):
 
 
 def calculate_total(rounds):
-    return sum(int(get_round_value(rounds, field) or 0) for field, _ in ROUND_FIELDS)
+    return sum(to_int(get_round_value(rounds, field)) for field, _ in ROUND_FIELDS)
 
 
 def login_required():
@@ -320,7 +342,7 @@ def home():
         <div class="info-card"><h3>Avtomatik Toplam</h3><p>Bütün turların xalı avtomatik toplanır və nəticə göstərilir.</p></div>
     </section>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -355,7 +377,7 @@ def login():
         </div>
     </main>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 @app.route("/logout")
@@ -395,20 +417,20 @@ def scores():
         f"""
         <tr>
             <td>{index}</td>
-            <td>{item['date']}</td>
-            <td>{item['team_name']}</td>
-            <td>{get_round_value(item['rounds'], 'round_1')}</td>
-            <td>{get_round_value(item['rounds'], 'round_2')}</td>
-            <td>{get_round_value(item['rounds'], 'round_3')}</td>
-            <td>{get_round_value(item['rounds'], 'round_4')}</td>
-            <td>{get_round_value(item['rounds'], 'round_5')}</td>
-            <td>{get_round_value(item['rounds'], 'round_6')}</td>
-            <td>{get_round_value(item['rounds'], 'round_7')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8_1')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8_2')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8_3')}</td>
-            <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>s
+            <td>{escape(item['date'])}</td>
+            <td>{escape(item['team_name'])}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_1'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_2'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_3'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_4'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_5'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_6'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_7'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_8'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_8_1'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_8_2'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_8_3'))}</td>
+            <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>
         </tr>
         """
         for index, item in enumerate(sorted_results, start=1)
@@ -427,7 +449,7 @@ def scores():
 
             <form method="GET" action="/scores" style="margin-top: 20px; max-width: 420px;">
                 <label>Tarix filteri</label>
-                <input type="date" name="game_date" value="{selected_date}">
+                <input type="date" name="game_date" value="{escape(selected_date)}">
                 <button class="btn" type="submit">Filterlə</button>
                 <a class="btn btn-secondary" href="/scores">Bütün nəticələr</a>
             </form>
@@ -446,7 +468,7 @@ def scores():
         </div>
     </main>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 @app.route("/admin")
@@ -463,30 +485,31 @@ def admin():
     results = selected_game.get("results", []) if selected_game else []
 
     team_options = "".join([
-        f'<option value="{team["id"]}">{team["name"]}</option>'
+        f'<option value="{to_int(team["id"])}">{escape(team["name"])}</option>'
         for team in teams_list
     ])
 
+    safe_date = escape(selected_date)
     rows = "".join([
         f"""
         <tr>
-            <td>{item['team_name']}</td>
-            <td>{get_round_value(item['rounds'], 'round_1')}</td>
-            <td>{get_round_value(item['rounds'], 'round_2')}</td>
-            <td>{get_round_value(item['rounds'], 'round_3')}</td>
-            <td>{get_round_value(item['rounds'], 'round_4')}</td>
-            <td>{get_round_value(item['rounds'], 'round_5')}</td>
-            <td>{get_round_value(item['rounds'], 'round_6')}</td>
-            <td>{get_round_value(item['rounds'], 'round_7')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8_1')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8_2')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8_3')}</td>
+            <td>{escape(item['team_name'])}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_1'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_2'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_3'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_4'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_5'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_6'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_7'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_8'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_8_1'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_8_2'))}</td>
+            <td>{to_int(get_round_value(item['rounds'], 'round_8_3'))}</td>
             <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>
             <td>
                 <div class="actions">
-                    <a class="small-btn secondary" href="/admin/date/{selected_date}/result/{item['id']}/edit">Editlə</a>
-                    <form method="POST" action="/admin/date/{selected_date}/result/{item['id']}/delete" onsubmit="return confirm('Bu nəticəni silmək istədiyinizə əminsiniz?')">
+                    <a class="small-btn secondary" href="/admin/date/{safe_date}/result/{to_int(item['id'])}/edit">Editlə</a>
+                    <form method="POST" action="/admin/date/{safe_date}/result/{to_int(item['id'])}/delete" onsubmit="return confirm('Bu nəticəni silmək istədiyinizə əminsiniz?')">
                         <button class="small-btn danger" type="submit">Sil</button>
                     </form>
                 </div>
@@ -515,7 +538,7 @@ def admin():
                 <h2>Xal əlavə et</h2>
                 <form method="POST" action="/admin/result/add">
                     <label>Tarix seç</label>
-                    <input type="date" name="game_date" value="{selected_date}" required>
+                    <input type="date" name="game_date" value="{safe_date}" required>
 
                     <label>Komanda seç</label>
                     <select name="team_id" required>
@@ -546,7 +569,7 @@ def admin():
 
                 <form method="GET" action="/admin" style="margin-top: 20px; max-width: 360px;">
                     <label>Tarix filteri</label>
-                    <input type="date" name="game_date" value="{selected_date}" onchange="this.form.submit()">
+                    <input type="date" name="game_date" value="{safe_date}" onchange="this.form.submit()">
                 </form>
 
                 <div class="table-wrap">
@@ -564,7 +587,7 @@ def admin():
         </div>
     </main>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 @app.route("/admin/team-name/add", methods=["POST"])
@@ -627,7 +650,7 @@ def add_result():
         # Boş buraxılan tur əvvəlki dəyəri saxlayır.
         # Yazılan dəyər isə mənfi olsa belə qəbul edilir.
         if raw_value != "":
-            rounds[field_name] = int(raw_value)
+            rounds[field_name] = to_int(raw_value)
 
     if existing:
         existing["rounds"] = rounds
@@ -663,38 +686,39 @@ def edit_result(game_date, result_id):
     if request.method == "POST":
         rounds = result.get("rounds", {})
         for field_name, _ in ROUND_FIELDS:
-            rounds[field_name] = int(request.form.get(field_name, 0) or 0)
+            rounds[field_name] = to_int(request.form.get(field_name, 0))
         result["rounds"] = rounds
         save_games(games)
         return redirect(url_for("admin", game_date=game_date))
 
     rounds = result.get("rounds", {})
+    safe_date = escape(game_date)
     content = f"""
     <main class="container">
         <div class="card" style="max-width: 620px; margin: 0 auto;">
             <h2>Nəticəni editlə</h2>
-            <p>Tarix: {game_date} | Komanda: {result['team_name']}</p>
+            <p>Tarix: {safe_date} | Komanda: {escape(result['team_name'])}</p>
             <form method="POST">
                 <div class="round-grid">
-                    <div><label>Tur 1</label><input type="number" name="round_1" value="{get_round_value(rounds, 'round_1')}"></div>
-                    <div><label>Tur 2</label><input type="number" name="round_2" value="{get_round_value(rounds, 'round_2')}"></div>
-                    <div><label>Tur 3</label><input type="number" name="round_3" value="{get_round_value(rounds, 'round_3')}"></div>
-                    <div><label>Tur 4</label><input type="number" name="round_4" value="{get_round_value(rounds, 'round_4')}"></div>
-                    <div><label>Tur 5</label><input type="number" name="round_5" value="{get_round_value(rounds, 'round_5')}"></div>
-                    <div><label>Tur 6</label><input type="number" name="round_6" value="{get_round_value(rounds, 'round_6')}"></div>
-                    <div><label>Tur 7</label><input type="number" name="round_7" value="{get_round_value(rounds, 'round_7')}"></div>
-                    <div><label>Tur 8</label><input type="number" name="round_8" value="{get_round_value(rounds, 'round_8')}"></div>
-                    <div><label>Tur 8(1)</label><input type="number" name="round_8_1" value="{get_round_value(rounds, 'round_8_1')}"></div>
-                    <div><label>Tur 8(2)</label><input type="number" name="round_8_2" value="{get_round_value(rounds, 'round_8_2')}"></div>
-                    <div><label>Tur 8(3)</label><input type="number" name="round_8_3" value="{get_round_value(rounds, 'round_8_3')}"></div>
+                    <div><label>Tur 1</label><input type="number" name="round_1" value="{to_int(get_round_value(rounds, 'round_1'))}"></div>
+                    <div><label>Tur 2</label><input type="number" name="round_2" value="{to_int(get_round_value(rounds, 'round_2'))}"></div>
+                    <div><label>Tur 3</label><input type="number" name="round_3" value="{to_int(get_round_value(rounds, 'round_3'))}"></div>
+                    <div><label>Tur 4</label><input type="number" name="round_4" value="{to_int(get_round_value(rounds, 'round_4'))}"></div>
+                    <div><label>Tur 5</label><input type="number" name="round_5" value="{to_int(get_round_value(rounds, 'round_5'))}"></div>
+                    <div><label>Tur 6</label><input type="number" name="round_6" value="{to_int(get_round_value(rounds, 'round_6'))}"></div>
+                    <div><label>Tur 7</label><input type="number" name="round_7" value="{to_int(get_round_value(rounds, 'round_7'))}"></div>
+                    <div><label>Tur 8</label><input type="number" name="round_8" value="{to_int(get_round_value(rounds, 'round_8'))}"></div>
+                    <div><label>Tur 8(1)</label><input type="number" name="round_8_1" value="{to_int(get_round_value(rounds, 'round_8_1'))}"></div>
+                    <div><label>Tur 8(2)</label><input type="number" name="round_8_2" value="{to_int(get_round_value(rounds, 'round_8_2'))}"></div>
+                    <div><label>Tur 8(3)</label><input type="number" name="round_8_3" value="{to_int(get_round_value(rounds, 'round_8_3'))}"></div>
                 </div>
                 <button class="btn" type="submit">Yadda saxla</button>
-                <a class="btn btn-secondary" href="/admin?game_date={game_date}">Geri qayıt</a>
+                <a class="btn btn-secondary" href="/admin?game_date={safe_date}">Geri qayıt</a>
             </form>
         </div>
     </main>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 @app.route("/admin/date/<game_date>/result/<int:result_id>/delete", methods=["POST"])
@@ -752,8 +776,10 @@ def about():
         </div>
     </section>
     """
-    return render_template_string(layout(content))
+    return layout(content)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes")
+    port = to_int(os.environ.get("PORT"), 5000)
+    app.run(host="0.0.0.0", port=port, debug=debug)
