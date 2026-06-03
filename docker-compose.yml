@@ -1,0 +1,31 @@
+services:
+  web:
+    build: .
+    image: paxlava-quiz
+    container_name: paxlava-quiz
+    environment:
+      # SECRET_KEY mütləq .env-də təyin edilməlidir
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY .env faylinda teyin edilmelidir}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      USER_USERNAME: ${USER_USERNAME:-user}
+      USER_PASSWORD: ${USER_PASSWORD:-user123}
+      DATA_DIR: /app/data
+    volumes:
+      # games.json / teams_list.json burada kalıcı saxlanılır
+      - quiz_data:/app/data
+    expose:
+      # host-a açılmır; yalnız nginx-proxy şəbəkəsi daxilində görünür
+      - "5000"
+    restart: unless-stopped
+    networks:
+      - proxy
+
+volumes:
+  quiz_data:
+
+networks:
+  proxy:
+    # nginx-proxy konteynerinin qoşulu olduğu mövcud şəbəkə
+    external: true
+    name: ${PROXY_NETWORK:-nginx-proxy}

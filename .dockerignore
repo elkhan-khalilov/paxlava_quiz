@@ -1,0 +1,16 @@
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+README.md
+__pycache__/
+*.pyc
+*.pyo
+*.tmp
+.venv/
+venv/
+.env
+.python-version
+homepage.html
+teams.json
