@@ -1,30 +1,21 @@
 services:
-  paxlava:
+  web:
     build: .
-    image: paxlava-quiz:latest
-    container_name: paxlava-quiz
-    restart: unless-stopped
+    image: paxlava-quiz
+    ports:
+      - "5000:5000"
     environment:
-      # SECRET_KEY mütləq .env faylında təyin edilməlidir
-      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY .env faylinda teyin edilmelidir}
+      # Override these in production. SECRET_KEY MUST be set to a random value.
+      SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      USER_USERNAME: ${USER_USERNAME:-user}
       USER_PASSWORD: ${USER_PASSWORD:-user123}
-      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
-      DATA_DIR: /data
+      DATA_DIR: /app/data
     volumes:
-      # games.json və teams_list.json buruda kalıcı saxlanılır
-      - paxlava-data:/data
-    expose:
-      # host-a açılmır; yalnız nginx-proxy şəbəkəsi daxilində görünür
-      - "8000"
-    networks:
-      - proxy
+      # Persists games.json / teams_list.json across container restarts.
+      - quiz_data:/app/data
+    restart: unless-stopped
 
 volumes:
-  paxlava-data:
-
-networks:
-  proxy:
-    # nginx-proxy konteynerinin qoşulu olduğu mövcud şəbəkə
-    external: true
-    name: ${PROXY_NETWORK:-nginx-proxy}
+  quiz_data:

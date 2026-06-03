@@ -1,21 +1,16 @@
 .git
 .gitignore
 .dockerignore
+Dockerfile
+docker-compose.yml
+README.md
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+*.tmp
 .venv/
 venv/
 .env
-.env.example
-*.log
-# runtime/test data — kalıcı volume-də saxlanılır, image-ə daxil edilmir
-games.json
-teams_list.json
-teams.json
-# istifadə olunmayan köhnə fayl
-homepage.html
-# yalnız serverdə lazım olan fayllar
-deploy/
-DEPLOY.md
-README.md
 .python-version
+homepage.html
+teams.json

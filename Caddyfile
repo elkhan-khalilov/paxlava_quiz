@@ -1,0 +1,6 @@
+# Subdomain reverse proxy with automatic Let's Encrypt HTTPS.
+# DOMAIN is read from the environment (e.g. quiz.dcl.az).
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy web:5000
+}
