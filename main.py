@@ -408,7 +408,7 @@ def scores():
             <td>{get_round_value(item['rounds'], 'round_8_1')}</td>
             <td>{get_round_value(item['rounds'], 'round_8_2')}</td>
             <td>{get_round_value(item['rounds'], 'round_8_3')}</td>
-            <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>
+            <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>s
         </tr>
         """
         for index, item in enumerate(sorted_results, start=1)
