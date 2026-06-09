@@ -13,7 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Application code.
-COPY main.py ./
+COPY main.py db.py migrate.py ./
 COPY static/ ./static/
 
 # Seed data lives in /app/data. When a named volume is first mounted here

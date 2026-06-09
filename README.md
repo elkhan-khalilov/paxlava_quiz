@@ -15,8 +15,8 @@ docker compose up --build -d
 
 Tətbiq `http://localhost:5000` ünvanında açılır.
 
-Data (`games.json`, `teams_list.json`) `quiz_data` adlı Docker volume-da saxlanılır
-və konteyner yenidən başladıqda itmir.
+Data **SQLite** bazasında (`quiz.db`) `quiz_data` adlı Docker volume-da saxlanılır
+və konteyner/kod yeniləndikdə itmir.
 
 Dayandırmaq üçün:
 
@@ -92,9 +92,32 @@ gunicorn --bind 0.0.0.0:5000 main:app
 | `ADMIN_PASSWORD` | `admin123` | Admin parolu |
 | `USER_USERNAME` | `user` | Adi istifadəçi adı |
 | `USER_PASSWORD` | `user123` | Adi istifadəçi parolu |
-| `DATA_DIR` | tətbiq qovluğu | JSON data fayllarının yeri |
+| `DATA_DIR` | tətbiq qovluğu | DB faylının (`quiz.db`) yeri |
+| `DB_PATH` | `DATA_DIR/quiz.db` | SQLite faylının tam yolu |
 | `PORT` | `5000` | `python main.py` üçün port |
 | `FLASK_DEBUG` | (bağlı) | `1` olduqda debug rejimi (yalnız development) |
+
+## Verilənlər bazası (SQLite)
+
+Data `DATA_DIR/quiz.db` SQLite faylındadır (`teams`, `games`, `results` cədvəlləri).
+Əlavə DB server lazım deyil — fayl volume-da saxlanılır.
+
+**Köhnə JSON-dan miqrasiya avtomatikdir:** tətbiq ilk dəfə qalxanda, əgər DB boşdursa
+və `games.json` / `teams_list.json` mövcuddursa, onları DB-ya köçürür (bir dəfə, `meta`
+cədvəlində qeyd olunur). JSON faylları silinmir — backup kimi qalır.
+
+İstəsən əl ilə də işə sala bilərsən:
+```bash
+docker compose exec web python migrate.py
+```
+
+Backup / bərpa:
+```bash
+# Backup
+docker compose cp web:/app/data/quiz.db ./quiz-backup.db
+# Bərpa
+docker compose cp ./quiz-backup.db web:/app/data/quiz.db && docker compose restart web
+```
 
 ## Səhifələr
 

@@ -1,8 +1,10 @@
 from flask import Flask, request, redirect, url_for, session, render_template_string, flash, get_flashed_messages
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
-import json
+from html import escape
 import os
+
+import db
 
 app = Flask(__name__)
 app.secret_key = "change-this-secret-key"
@@ -12,8 +14,9 @@ users = {
     "user": {"password": generate_password_hash("user123"), "role": "user"}
 }
 
-DATA_FILE = "games.json"
-TEAMS_FILE = "teams_list.json"
+# Create the SQLite database (inside DATA_DIR) and import any existing JSON
+# data exactly once. The DB file lives in the same volume as the old files.
+db.migrate_json_if_needed()
 
 ROUND_FIELDS = [
     ("round_1", "Tur 1"),
@@ -30,44 +33,11 @@ ROUND_FIELDS = [
 ]
 
 
-def ensure_file(path, default_data):
-    if not os.path.exists(path):
-        with open(path, "w", encoding="utf-8") as file:
-            json.dump(default_data, file, ensure_ascii=False, indent=4)
-
-
-def load_json(path, default_data):
-    ensure_file(path, default_data)
-    with open(path, "r", encoding="utf-8") as file:
-        try:
-            return json.load(file)
-        except json.JSONDecodeError:
-            return default_data
-
-
-def save_json(path, data):
-    with open(path, "w", encoding="utf-8") as file:
-        json.dump(data, file, ensure_ascii=False, indent=4)
-
-
-def load_games():
-    return load_json(DATA_FILE, [])
-
-
-def save_games(games):
-    save_json(DATA_FILE, games)
-
-
-def load_teams_list():
-    return load_json(TEAMS_FILE, [])
-
-
-def save_teams_list(teams):
-    save_json(TEAMS_FILE, teams)
-
-
-def get_next_id(items):
-    return max([item.get("id", 0) for item in items], default=0) + 1
+def to_int(value, default=0):
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
 
 
 def get_game_by_date(games, game_date):
@@ -382,7 +352,7 @@ def logout():
 
 @app.route("/scores")
 def scores():
-    games = load_games()
+    games = db.load_games()
     selected_date = request.args.get("game_date", "").strip()
 
     if selected_date:
@@ -483,8 +453,8 @@ def admin():
     if not admin_required():
         return redirect(url_for("scores"))
 
-    teams_list = load_teams_list()
-    games = load_games()
+    teams_list = db.load_teams_list()
+    games = db.load_games()
     selected_date = request.args.get("game_date") or date.today().isoformat()
     selected_game = get_game_by_date(games, selected_date)
     results = selected_game.get("results", []) if selected_game else []
@@ -671,12 +641,9 @@ def add_team_name():
     if not admin_required():
         return redirect(url_for("scores"))
 
-    teams = load_teams_list()
     team_name = request.form.get("team_name", "").strip()
-
-    if team_name and not any(team["name"].lower() == team_name.lower() for team in teams):
-        teams.append({"id": get_next_id(teams), "name": team_name})
-        save_teams_list(teams)
+    if team_name:
+        db.add_team(team_name)
 
     return redirect(url_for("admin"))
 
@@ -688,8 +655,9 @@ def update_team_names():
     if not admin_required():
         return redirect(url_for("scores"))
 
-    teams = load_teams_list()
-    games = load_games()
+    game_date = request.form.get("game_date") or date.today().isoformat()
+    team_id = request.form.get("team_id", type=int)
+    team = db.get_team(team_id)
 
     id_to_new_name = {}
     for team in teams:
@@ -698,35 +666,16 @@ def update_team_names():
             id_to_new_name[team["id"]] = new_name
             team["name"] = new_name
 
-    for game in games:
-        for result in game.get("results", []):
-            team_id = result.get("team_id")
-            if team_id in id_to_new_name:
-                result["team_name"] = id_to_new_name[team_id]
+    # Boş buraxılan tur əvvəlki dəyəri saxlayır.
+    # Yazılan dəyər isə mənfi olsa belə qəbul edilir.
+    provided = {}
+    for field_name, _ in ROUND_FIELDS:
+        raw_value = request.form.get(field_name, "").strip()
+        if raw_value != "":
+            provided[field_name] = to_int(raw_value)
 
-    save_teams_list(teams)
-    save_games(games)
-    return redirect(url_for("admin"))
-
-
-@app.route("/admin/team-name/<int:team_id>/delete", methods=["POST"])
-def delete_team_name(team_id):
-    if not login_required():
-        return redirect(url_for("login"))
-    if not admin_required():
-        return redirect(url_for("scores"))
-
-    teams = load_teams_list()
-    games = load_games()
-
-    teams = [team for team in teams if team["id"] != team_id]
-
-    for game in games:
-        game["results"] = [result for result in game.get("results", []) if result.get("team_id") != team_id]
-
-    save_teams_list(teams)
-    save_games(games)
-    return redirect(url_for("admin"))
+    db.upsert_result(game_date, team_id, team["name"], provided)
+    return redirect(url_for("admin", game_date=game_date))
 
 
 @app.route("/admin/scores/update", methods=["POST"])
@@ -736,49 +685,14 @@ def update_scores_table():
     if not admin_required():
         return redirect(url_for("scores"))
 
-    games = load_games()
-    game_date = request.form.get("game_date") or date.today().isoformat()
-    row_count = int(request.form.get("row_count", 0) or 0)
+    result = db.get_result(result_id)
+    if not result:
+        return redirect(url_for("admin", game_date=game_date))
 
-    game = get_game_by_date(games, game_date)
-    if not game:
-        game = {"id": get_next_id(games), "date": game_date, "results": []}
-        games.append(game)
-
-    existing_by_id = {item["id"]: item for item in game.get("results", []) if item.get("id") is not None}
-    existing_by_team_id = {item["team_id"]: item for item in game.get("results", []) if item.get("team_id") is not None}
-
-    updated_results = []
-
-    for row_index in range(1, row_count + 1):
-        team_id = request.form.get(f"team_id_{row_index}", type=int)
-        team_name = request.form.get(f"team_name_{row_index}", "").strip()
-        result_id_raw = request.form.get(f"result_id_{row_index}", "").strip()
-        result_id = int(result_id_raw) if result_id_raw else None
-
-        if not team_id or not team_name:
-            continue
-
-        rounds = {}
-        for field, _ in ROUND_FIELDS:
-            rounds[field] = int(request.form.get(f"{field}_{row_index}", 0) or 0)
-
-        if result_id and result_id in existing_by_id:
-            result = existing_by_id[result_id]
-        elif team_id in existing_by_team_id:
-            result = existing_by_team_id[team_id]
-        else:
-            result = {
-                "id": get_next_id(game.get("results", []) + updated_results),
-                "team_id": team_id,
-                "team_name": team_name,
-                "rounds": {}
-            }
-
-        result["team_id"] = team_id
-        result["team_name"] = team_name
-        result["rounds"] = rounds
-        updated_results.append(result)
+    if request.method == "POST":
+        rounds = {field_name: to_int(request.form.get(field_name, 0)) for field_name, _ in ROUND_FIELDS}
+        db.update_result_rounds(result_id, rounds)
+        return redirect(url_for("admin", game_date=game_date))
 
     # Yalnız bu tarixin cədvəlində göstərilən komandalar saxlanır.
     # Komanda siyahısı ayrıca qalır.
@@ -795,13 +709,7 @@ def delete_result(game_date, result_id):
     if not admin_required():
         return redirect(url_for("scores"))
 
-    games = load_games()
-    game = get_game_by_date(games, game_date)
-
-    if game:
-        game["results"] = [item for item in game.get("results", []) if item["id"] != result_id]
-        save_games(games)
-
+    db.delete_result(result_id)
     return redirect(url_for("admin", game_date=game_date))
 
 
