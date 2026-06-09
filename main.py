@@ -2,8 +2,9 @@ from flask import Flask, request, redirect, url_for, session, flash, get_flashed
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
 from html import escape
-import json
 import os
+
+import db
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
@@ -19,10 +20,9 @@ users = {
     USER_USERNAME: {"password": generate_password_hash(USER_PASSWORD), "role": "user"},
 }
 
-# Data directory is configurable so it can be mounted as a volume in Docker.
-DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(os.path.abspath(__file__)))
-DATA_FILE = os.path.join(DATA_DIR, "games.json")
-TEAMS_FILE = os.path.join(DATA_DIR, "teams_list.json")
+# Create the SQLite database (inside DATA_DIR) and import any existing JSON
+# data exactly once. The DB file lives in the same volume as the old files.
+db.migrate_json_if_needed()
 
 ROUND_FIELDS = [
     ("round_1", "Tur 1"),
@@ -39,57 +39,11 @@ ROUND_FIELDS = [
 ]
 
 
-def ensure_file(path, default_data):
-    if not os.path.exists(path):
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        with open(path, "w", encoding="utf-8") as file:
-            json.dump(default_data, file, ensure_ascii=False, indent=4)
-
-
-def load_json(path, default_data):
-    ensure_file(path, default_data)
-    with open(path, "r", encoding="utf-8") as file:
-        try:
-            return json.load(file)
-        except json.JSONDecodeError:
-            return default_data
-
-
-def save_json(path, data):
-    # Write to a temp file then atomically replace, so a crash or concurrent
-    # read can never observe a half-written (corrupt) JSON file.
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as file:
-        json.dump(data, file, ensure_ascii=False, indent=4)
-    os.replace(tmp_path, path)
-
-
 def to_int(value, default=0):
     try:
         return int(str(value).strip())
     except (TypeError, ValueError):
         return default
-
-
-def load_games():
-    return load_json(DATA_FILE, [])
-
-
-def save_games(games):
-    save_json(DATA_FILE, games)
-
-
-def load_teams_list():
-    return load_json(TEAMS_FILE, [])
-
-
-def save_teams_list(teams):
-    save_json(TEAMS_FILE, teams)
-
-
-def get_next_id(items):
-    return max([item.get("id", 0) for item in items], default=0) + 1
 
 
 def get_game_by_date(games, game_date):
@@ -388,7 +342,7 @@ def logout():
 
 @app.route("/scores")
 def scores():
-    games = load_games()
+    games = db.load_games()
     selected_date = request.args.get("game_date", "").strip()
 
     all_results = []
@@ -478,8 +432,8 @@ def admin():
     if not admin_required():
         return redirect(url_for("scores"))
 
-    teams_list = load_teams_list()
-    games = load_games()
+    teams_list = db.load_teams_list()
+    games = db.load_games()
     selected_date = request.args.get("game_date") or date.today().isoformat()
     selected_game = get_game_by_date(games, selected_date)
     results = selected_game.get("results", []) if selected_game else []
@@ -597,12 +551,9 @@ def add_team_name():
     if not admin_required():
         return redirect(url_for("scores"))
 
-    teams = load_teams_list()
     team_name = request.form.get("team_name", "").strip()
-
-    if team_name and not any(team["name"].lower() == team_name.lower() for team in teams):
-        teams.append({"id": get_next_id(teams), "name": team_name})
-        save_teams_list(teams)
+    if team_name:
+        db.add_team(team_name)
 
     return redirect(url_for("admin"))
 
@@ -614,56 +565,22 @@ def add_result():
     if not admin_required():
         return redirect(url_for("scores"))
 
-    teams_list = load_teams_list()
-    games = load_games()
     game_date = request.form.get("game_date") or date.today().isoformat()
     team_id = request.form.get("team_id", type=int)
-    team = next((team for team in teams_list if team["id"] == team_id), None)
+    team = db.get_team(team_id)
 
     if not team:
         return redirect(url_for("admin", game_date=game_date))
 
-    game = get_game_by_date(games, game_date)
-    if not game:
-        game = {"id": get_next_id(games), "date": game_date, "results": []}
-        games.append(game)
-
-    existing = next((item for item in game.get("results", []) if item["team_id"] == team_id), None)
-
-    if existing:
-        rounds = existing.get("rounds", {})
-    else:
-        rounds = {field: 0 for field, _ in ROUND_FIELDS}
-
-    legacy_map = {
-        "round_8_1": "round_8(1)",
-        "round_8_2": "round_8(2)",
-        "round_8_3": "round_8(3)",
-    }
-    for new_key, old_key in legacy_map.items():
-        if new_key not in rounds and old_key in rounds:
-            rounds[new_key] = rounds.get(old_key, 0)
-
+    # Boş buraxılan tur əvvəlki dəyəri saxlayır.
+    # Yazılan dəyər isə mənfi olsa belə qəbul edilir.
+    provided = {}
     for field_name, _ in ROUND_FIELDS:
         raw_value = request.form.get(field_name, "").strip()
-
-        # Boş buraxılan tur əvvəlki dəyəri saxlayır.
-        # Yazılan dəyər isə mənfi olsa belə qəbul edilir.
         if raw_value != "":
-            rounds[field_name] = to_int(raw_value)
+            provided[field_name] = to_int(raw_value)
 
-    if existing:
-        existing["rounds"] = rounds
-        existing["team_name"] = team["name"]
-    else:
-        game.setdefault("results", []).append({
-            "id": get_next_id(game.get("results", [])),
-            "team_id": team_id,
-            "team_name": team["name"],
-            "rounds": rounds
-        })
-
-    save_games(games)
+    db.upsert_result(game_date, team_id, team["name"], provided)
     return redirect(url_for("admin", game_date=game_date))
 
 
@@ -674,21 +591,13 @@ def edit_result(game_date, result_id):
     if not admin_required():
         return redirect(url_for("scores"))
 
-    games = load_games()
-    game = get_game_by_date(games, game_date)
-    if not game:
-        return redirect(url_for("admin", game_date=game_date))
-
-    result = next((item for item in game.get("results", []) if item["id"] == result_id), None)
+    result = db.get_result(result_id)
     if not result:
         return redirect(url_for("admin", game_date=game_date))
 
     if request.method == "POST":
-        rounds = result.get("rounds", {})
-        for field_name, _ in ROUND_FIELDS:
-            rounds[field_name] = to_int(request.form.get(field_name, 0))
-        result["rounds"] = rounds
-        save_games(games)
+        rounds = {field_name: to_int(request.form.get(field_name, 0)) for field_name, _ in ROUND_FIELDS}
+        db.update_result_rounds(result_id, rounds)
         return redirect(url_for("admin", game_date=game_date))
 
     rounds = result.get("rounds", {})
@@ -728,12 +637,7 @@ def delete_result(game_date, result_id):
     if not admin_required():
         return redirect(url_for("scores"))
 
-    games = load_games()
-    game = get_game_by_date(games, game_date)
-    if game:
-        game["results"] = [item for item in game.get("results", []) if item["id"] != result_id]
-        save_games(games)
-
+    db.delete_result(result_id)
     return redirect(url_for("admin", game_date=game_date))
 
 
