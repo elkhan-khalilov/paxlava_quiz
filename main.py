@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, url_for, session, flash, get_flashed_messages
+from flask import Flask, request, redirect, url_for, session, render_template_string, flash, get_flashed_messages
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
 from html import escape
@@ -7,17 +7,11 @@ import os
 import db
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
-
-# Credentials are configurable via environment variables (with safe local defaults).
-ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
-USER_USERNAME = os.environ.get("USER_USERNAME", "user")
-USER_PASSWORD = os.environ.get("USER_PASSWORD", "user123")
+app.secret_key = "change-this-secret-key"
 
 users = {
-    ADMIN_USERNAME: {"password": generate_password_hash(ADMIN_PASSWORD), "role": "admin"},
-    USER_USERNAME: {"password": generate_password_hash(USER_PASSWORD), "role": "user"},
+    "admin": {"password": generate_password_hash("admin123"), "role": "admin"},
+    "user": {"password": generate_password_hash("user123"), "role": "user"}
 }
 
 # Create the SQLite database (inside DATA_DIR) and import any existing JSON
@@ -61,8 +55,15 @@ def get_round_value(rounds, field):
     return rounds.get(legacy_map.get(field, ""), 0)
 
 
+def normalize_rounds(rounds):
+    normalized = {}
+    for field, _ in ROUND_FIELDS:
+        normalized[field] = int(get_round_value(rounds, field) or 0)
+    return normalized
+
+
 def calculate_total(rounds):
-    return sum(to_int(get_round_value(rounds, field)) for field, _ in ROUND_FIELDS)
+    return sum(int(get_round_value(rounds, field) or 0) for field, _ in ROUND_FIELDS)
 
 
 def login_required():
@@ -127,7 +128,7 @@ BASE_STYLE = """
 
     nav a:hover { color: var(--blue-600); background: var(--blue-100); }
 
-    .container { width: min(1200px, 92%); margin: 50px auto; }
+    .container { width: min(1280px, 94%); margin: 44px auto; }
 
     .card {
         background: var(--white-glass); border: 1px solid var(--border); border-radius: 26px; padding: 30px;
@@ -136,55 +137,64 @@ BASE_STYLE = """
 
     h1, h2, h3 { color: var(--blue-700); }
     h1 { font-size: 48px; margin-bottom: 16px; }
-    h2 { font-size: 32px; margin-bottom: 20px; }
+    h2 { font-size: 30px; margin-bottom: 18px; }
+    h3 { font-size: 22px; margin-bottom: 12px; }
     p { color: var(--muted); line-height: 1.6; }
 
     .btn {
-        display: inline-block; padding: 13px 22px; border-radius: 14px; border: none;
+        display: inline-block; padding: 12px 18px; border-radius: 14px; border: none;
         background: linear-gradient(135deg, var(--blue-500), var(--blue-600)); color: white;
-        text-decoration: none; font-weight: 900; cursor: pointer; margin-top: 18px;
-        box-shadow: 0 14px 28px rgba(30,136,229,0.22); transition: 0.25s;
+        text-decoration: none; font-weight: 900; cursor: pointer; margin-top: 14px;
+        box-shadow: 0 14px 28px rgba(30,136,229,0.18); transition: 0.25s;
+        white-space: nowrap;
     }
 
     .btn:hover { background: linear-gradient(135deg, var(--blue-600), var(--blue-700)); transform: translateY(-2px); }
     .btn-secondary { background: var(--blue-100); color: var(--blue-700); box-shadow: none; border: 1px solid var(--border); }
+    .btn-danger { background: linear-gradient(135deg, #ef5350, #e53935); }
 
     form label { display: block; margin: 14px 0 8px; font-weight: 900; color: var(--blue-700); }
 
     input, select {
-        width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border);
-        font-size: 16px; outline: none; background: rgba(255,255,255,0.9); color: var(--text);
+        width: 100%; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border);
+        font-size: 15px; outline: none; background: rgba(255,255,255,0.9); color: var(--text);
     }
 
     input:focus, select:focus { border-color: var(--blue-500); box-shadow: 0 0 0 4px rgba(66,165,245,0.18); }
 
     table {
-        width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 24px; overflow: hidden;
+        width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 18px; overflow: hidden;
         border-radius: 18px; border: 1px solid var(--border); box-shadow: 0 18px 36px rgba(30,136,229,0.08);
     }
 
-    th, td { padding: 13px; text-align: left; border-bottom: 1px solid rgba(66,165,245,0.14); }
-    th { background: linear-gradient(135deg, var(--blue-500), var(--blue-600)); color: white; }
-    td { background: rgba(255,255,255,0.74); color: var(--text); font-weight: 700; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid rgba(66,165,245,0.14); }
+    th { background: linear-gradient(135deg, var(--blue-500), var(--blue-600)); color: white; font-size: 14px; }
+    td { background: rgba(255,255,255,0.76); color: var(--text); font-weight: 700; }
     tr:last-child td { border-bottom: none; }
 
     .grid { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; }
     .message { padding: 12px 16px; border-radius: 14px; margin-bottom: 18px; background: var(--blue-100); color: var(--blue-700); font-weight: 800; border: 1px solid var(--border); }
-    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
     .small-btn {
-        padding: 8px 12px; border-radius: 10px; color: white; background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
-        text-decoration: none; font-size: 14px; border: none; cursor: pointer; font-weight: 800;
+        padding: 8px 10px; border-radius: 10px; color: white; background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+        text-decoration: none; font-size: 13px; border: none; cursor: pointer; font-weight: 800;
     }
 
     .small-btn.secondary { background: linear-gradient(135deg, var(--blue-400), var(--blue-500)); }
-    .small-btn.danger { background: linear-gradient(135deg, var(--blue-300), var(--blue-600)); }
+    .small-btn.danger { background: linear-gradient(135deg, #ef5350, #e53935); }
 
     .round-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
     .table-wrap { overflow-x: auto; }
     .total-cell { color: var(--blue-700); font-size: 18px; font-weight: 900; }
+    .score-input { min-width: 78px; padding: 9px 8px; text-align: center; border-radius: 10px; }
+    .team-manage-table input { min-width: 180px; }
+    .toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin: 18px 0; }
+    .toolbar form { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+    .toolbar label { margin-top: 0; }
+    .inline-form { display: inline; margin: 0; }
 
-    @media (max-width: 900px) {
+    @media (max-width: 980px) {
         header { flex-direction: column; gap: 16px; }
         nav a { margin: 0 8px; }
         .grid { grid-template-columns: 1fr; }
@@ -277,7 +287,7 @@ def home():
                 </div>
                 <div class="hero-features">
                     <div class="feature-box"><h4>Komanda Qur</h4><p>Dostlarınla birlikdə yarış və qalib ol.</p></div>
-                    <div class="feature-box"><h4>8 Tur</h4><p>Əsas turlar və əlavə 8-ci tur xalları avtomatik hesablanır.</p></div>
+                    <div class="feature-box"><h4>Excel tipli cədvəl</h4><p>Admin xalları birbaşa cədvəldə dəyişə bilir.</p></div>
                     <div class="feature-box"><h4>Canlı Reytinq</h4><p>Bütün komandaları tarix üzrə izləyin.</p></div>
                 </div>
             </div>
@@ -296,7 +306,7 @@ def home():
         <div class="info-card"><h3>Avtomatik Toplam</h3><p>Bütün turların xalı avtomatik toplanır və nəticə göstərilir.</p></div>
     </section>
     """
-    return layout(content)
+    return render_template_string(layout(content))
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -331,7 +341,7 @@ def login():
         </div>
     </main>
     """
-    return layout(content)
+    return render_template_string(layout(content))
 
 
 @app.route("/logout")
@@ -345,45 +355,58 @@ def scores():
     games = db.load_games()
     selected_date = request.args.get("game_date", "").strip()
 
-    all_results = []
-
     if selected_date:
         selected_game = get_game_by_date(games, selected_date)
+        results = []
+
         if selected_game:
             for item in selected_game.get("results", []):
-                all_results.append({
-                    "date": selected_game.get("date"),
+                results.append({
                     "team_name": item.get("team_name"),
-                    "rounds": item.get("rounds", {})
-                })
-    else:
-        for game in games:
-            for item in game.get("results", []):
-                all_results.append({
-                    "date": game.get("date"),
-                    "team_name": item.get("team_name"),
-                    "rounds": item.get("rounds", {})
+                    "rounds": normalize_rounds(item.get("rounds", {}))
                 })
 
-    sorted_results = sorted(all_results, key=lambda item: calculate_total(item.get("rounds", {})), reverse=True)
+        filter_text = "Seçilmiş tarix üzrə komandaların nəticələri göstərilir."
+    else:
+        # Tarix seçilməyəndə hər komanda üzrə bütün tarixlərdəki xallar toplanır.
+        totals_by_team = {}
+
+        for game in games:
+            for item in game.get("results", []):
+                team_id = item.get("team_id")
+                team_name = item.get("team_name")
+                key = team_id if team_id is not None else team_name
+
+                if key not in totals_by_team:
+                    totals_by_team[key] = {
+                        "team_name": team_name,
+                        "rounds": {field: 0 for field, _ in ROUND_FIELDS}
+                    }
+
+                for field, _ in ROUND_FIELDS:
+                    totals_by_team[key]["rounds"][field] += int(get_round_value(item.get("rounds", {}), field) or 0)
+
+        results = list(totals_by_team.values())
+        filter_text = "Tarix seçilməyib: hər komanda üzrə bütün tarixlərin ümumi nəticəsi göstərilir."
+
+    sorted_results = sorted(results, key=lambda item: calculate_total(item.get("rounds", {})), reverse=True)
 
     rows = "".join([
         f"""
         <tr>
             <td>{index}</td>
-            <td>{escape(item['date'])}</td>
-            <td>{escape(item['team_name'])}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_1'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_2'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_3'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_4'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_5'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_6'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_7'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_8'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_8_1'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_8_2'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_8_3'))}</td>
+            <td>{item['team_name']}</td>
+            <td>{get_round_value(item['rounds'], 'round_1')}</td>
+            <td>{get_round_value(item['rounds'], 'round_2')}</td>
+            <td>{get_round_value(item['rounds'], 'round_3')}</td>
+            <td>{get_round_value(item['rounds'], 'round_4')}</td>
+            <td>{get_round_value(item['rounds'], 'round_5')}</td>
+            <td>{get_round_value(item['rounds'], 'round_6')}</td>
+            <td>{get_round_value(item['rounds'], 'round_7')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8_1')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8_2')}</td>
+            <td>{get_round_value(item['rounds'], 'round_8_3')}</td>
             <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>
         </tr>
         """
@@ -391,9 +414,7 @@ def scores():
     ])
 
     if not rows:
-        rows = '<tr><td colspan="15">Hələ nəticə əlavə edilməyib.</td></tr>'
-
-    filter_text = "Seçilmiş tarix üzrə nəticələr göstərilir." if selected_date else "Bütün tarixlər üzrə indiyə kimi əlavə edilmiş nəticələr göstərilir."
+        rows = '<tr><td colspan="14">Hələ nəticə əlavə edilməyib.</td></tr>'
 
     content = f"""
     <main class="container">
@@ -403,16 +424,16 @@ def scores():
 
             <form method="GET" action="/scores" style="margin-top: 20px; max-width: 420px;">
                 <label>Tarix filteri</label>
-                <input type="date" name="game_date" value="{escape(selected_date)}">
+                <input type="date" name="game_date" value="{selected_date}">
                 <button class="btn" type="submit">Filterlə</button>
-                <a class="btn btn-secondary" href="/scores">Bütün nəticələr</a>
+                <a class="btn btn-secondary" href="/scores">Ümumi nəticə</a>
             </form>
 
             <div class="table-wrap">
                 <table>
                     <thead>
                         <tr>
-                            <th>#</th><th>Tarix</th><th>Komanda</th><th>Tur 1</th><th>Tur 2</th><th>Tur 3</th><th>Tur 4</th>
+                            <th>#</th><th>Komanda</th><th>Tur 1</th><th>Tur 2</th><th>Tur 3</th><th>Tur 4</th>
                             <th>Tur 5</th><th>Tur 6</th><th>Tur 7</th><th>Tur 8</th><th>Tur 8(1)</th><th>Tur 8(2)</th><th>Tur 8(3)</th><th>Toplam</th>
                         </tr>
                     </thead>
@@ -422,7 +443,7 @@ def scores():
         </div>
     </main>
     """
-    return layout(content)
+    return render_template_string(layout(content))
 
 
 @app.route("/admin")
@@ -438,43 +459,92 @@ def admin():
     selected_game = get_game_by_date(games, selected_date)
     results = selected_game.get("results", []) if selected_game else []
 
-    team_options = "".join([
-        f'<option value="{to_int(team["id"])}">{escape(team["name"])}</option>'
-        for team in teams_list
-    ])
+    # Komandaları sıralı göstərmək üçün xəritə
+    results_by_team_id = {item["team_id"]: item for item in results}
 
-    safe_date = escape(selected_date)
-    rows = "".join([
+    # Həmin tarix üçün xal yazılmış, amma teams_list-dən silinmiş köhnə komandalar da itmesin
+    extra_results = [item for item in results if item.get("team_id") not in {team["id"] for team in teams_list}]
+
+    team_rows = "".join([
         f"""
         <tr>
-            <td>{escape(item['team_name'])}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_1'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_2'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_3'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_4'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_5'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_6'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_7'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_8'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_8_1'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_8_2'))}</td>
-            <td>{to_int(get_round_value(item['rounds'], 'round_8_3'))}</td>
-            <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>
+            <td>
+                <input type="text" name="team_name_{team['id']}" value="{team['name']}" form="teamManageForm">
+            </td>
             <td>
                 <div class="actions">
-                    <a class="small-btn secondary" href="/admin/date/{safe_date}/result/{to_int(item['id'])}/edit">Editlə</a>
-                    <form method="POST" action="/admin/date/{safe_date}/result/{to_int(item['id'])}/delete" onsubmit="return confirm('Bu nəticəni silmək istədiyinizə əminsiniz?')">
-                        <button class="small-btn danger" type="submit">Sil</button>
+                    <button class="small-btn secondary" type="submit" form="teamManageForm">Yadda saxla</button>
+                    <form class="inline-form" method="POST" action="/admin/team-name/{team['id']}/delete" onsubmit="return confirm('Bu komandanı tam silmək istədiyinizə əminsiniz? Bu komandanın bütün tarixlər üzrə nəticələri də silinəcək.')">
+                        <button class="small-btn danger" type="submit">Komandanı sil</button>
                     </form>
                 </div>
             </td>
         </tr>
         """
-        for item in results
+        for team in teams_list
     ])
 
-    if not rows:
-        rows = '<tr><td colspan="14">Seçilmiş tarix üçün hələ xal əlavə edilməyib.</td></tr>'
+    if not team_rows:
+        team_rows = '<tr><td colspan="2">Hələ komanda əlavə edilməyib.</td></tr>'
+
+    score_rows = ""
+    row_index = 1
+
+    for team in teams_list:
+        result = results_by_team_id.get(team["id"])
+        result_id = result["id"] if result else ""
+        rounds = normalize_rounds(result.get("rounds", {})) if result else {field: 0 for field, _ in ROUND_FIELDS}
+
+        hidden_inputs = f"""
+            <input type="hidden" name="team_id_{row_index}" value="{team['id']}">
+            <input type="hidden" name="team_name_{row_index}" value="{team['name']}">
+            <input type="hidden" name="result_id_{row_index}" value="{result_id}">
+        """
+
+        round_inputs = "".join([
+            f'<td><input class="score-input" type="number" name="{field}_{row_index}" value="{rounds.get(field, 0)}" data-row="{row_index}" oninput="updateRowTotal({row_index})"></td>'
+            for field, _ in ROUND_FIELDS
+        ])
+
+        score_rows += f"""
+        <tr>
+            <td>{team['name']}{hidden_inputs}</td>
+            {round_inputs}
+            <td class="total-cell" id="total_{row_index}">{calculate_total(rounds)}</td>
+            <td>
+                <button class="small-btn danger" type="submit" formaction="/admin/date/{selected_date}/result/{result_id}/delete" formmethod="POST" {'disabled' if not result_id else ''} onclick="return confirm('Bu tarix üzrə sətiri silmək istədiyinizə əminsiniz?')">Sətiri sil</button>
+            </td>
+        </tr>
+        """
+        row_index += 1
+
+    # Əgər hansısa nəticə əvvəlki komanda siyahısından qalıbsa, ayrıca göstəririk
+    for item in extra_results:
+        rounds = normalize_rounds(item.get("rounds", {}))
+        hidden_inputs = f"""
+            <input type="hidden" name="team_id_{row_index}" value="{item['team_id']}">
+            <input type="hidden" name="team_name_{row_index}" value="{item['team_name']}">
+            <input type="hidden" name="result_id_{row_index}" value="{item['id']}">
+        """
+        round_inputs = "".join([
+            f'<td><input class="score-input" type="number" name="{field}_{row_index}" value="{rounds.get(field, 0)}" data-row="{row_index}" oninput="updateRowTotal({row_index})"></td>'
+            for field, _ in ROUND_FIELDS
+        ])
+
+        score_rows += f"""
+        <tr>
+            <td>{item['team_name']}{hidden_inputs}</td>
+            {round_inputs}
+            <td class="total-cell" id="total_{row_index}">{calculate_total(rounds)}</td>
+            <td>
+                <button class="small-btn danger" type="submit" formaction="/admin/date/{selected_date}/result/{item['id']}/delete" formmethod="POST" onclick="return confirm('Bu tarix üzrə sətiri silmək istədiyinizə əminsiniz?')">Sətiri sil</button>
+            </td>
+        </tr>
+        """
+        row_index += 1
+
+    if not score_rows:
+        score_rows = '<tr><td colspan="15">Hələ komanda əlavə edilməyib.</td></tr>'
 
     content = f"""
     <main class="container">
@@ -489,59 +559,79 @@ def admin():
 
                 <hr style="margin: 28px 0; border: none; border-top: 1px solid rgba(66,165,245,0.18);">
 
-                <h2>Xal əlavə et</h2>
-                <form method="POST" action="/admin/result/add">
-                    <label>Tarix seç</label>
-                    <input type="date" name="game_date" value="{safe_date}" required>
-
-                    <label>Komanda seç</label>
-                    <select name="team_id" required>
-                        {team_options if team_options else '<option value="">Əvvəl komanda əlavə edin</option>'}
-                    </select>
-
-                    <div class="round-grid">
-                        <div><label>Tur 1</label><input type="number" name="round_1" placeholder="0"></div>
-                        <div><label>Tur 2</label><input type="number" name="round_2" placeholder="0"></div>
-                        <div><label>Tur 3</label><input type="number" name="round_3" placeholder="0"></div>
-                        <div><label>Tur 4</label><input type="number" name="round_4" placeholder="0"></div>
-                        <div><label>Tur 5</label><input type="number" name="round_5" placeholder="0"></div>
-                        <div><label>Tur 6</label><input type="number" name="round_6" placeholder="0"></div>
-                        <div><label>Tur 7</label><input type="number" name="round_7" placeholder="0"></div>
-                        <div><label>Tur 8</label><input type="number" name="round_8" placeholder="0"></div>
-                        <div><label>Tur 8(1)</label><input type="number" name="round_8_1" placeholder="0"></div>
-                        <div><label>Tur 8(2)</label><input type="number" name="round_8_2" placeholder="0"></div>
-                        <div><label>Tur 8(3)</label><input type="number" name="round_8_3" placeholder="0"></div>
-                    </div>
-
-                    <button class="btn" type="submit">Xalları əlavə et</button>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2>Admin page</h2>
-                <p>Tarix seçin, həmin tarix üzrə komandaların bütün tur nəticələrini idarə edin.</p>
-
-                <form method="GET" action="/admin" style="margin-top: 20px; max-width: 360px;">
-                    <label>Tarix filteri</label>
-                    <input type="date" name="game_date" value="{safe_date}" onchange="this.form.submit()">
-                </form>
-
+                <h2>Komandalar</h2>
+                <form id="teamManageForm" method="POST" action="/admin/team-names/update"></form>
                 <div class="table-wrap">
-                    <table>
+                    <table class="team-manage-table">
                         <thead>
-                            <tr>
-                                <th>Komanda</th><th>Tur 1</th><th>Tur 2</th><th>Tur 3</th><th>Tur 4</th>
-                                <th>Tur 5</th><th>Tur 6</th><th>Tur 7</th><th>Tur 8</th><th>Tur 8(1)</th><th>Tur 8(2)</th><th>Tur 8(3)</th><th>Toplam</th><th>Əməliyyat</th>
-                            </tr>
+                            <tr><th>Komanda adı</th><th>Əməliyyat</th></tr>
                         </thead>
-                        <tbody>{rows}</tbody>
+                        <tbody>{team_rows}</tbody>
                     </table>
                 </div>
             </div>
+
+            <div class="card">
+                <h2>Excel tipli xal cədvəli</h2>
+                <p>Tarix seçin, xalları birbaşa cədvəldə dəyişin və yadda saxlayın.</p>
+
+                <div class="toolbar">
+                    <form method="GET" action="/admin">
+                        <div>
+                            <label>Tarix filteri</label>
+                            <input type="date" name="game_date" value="{selected_date}">
+                        </div>
+                        <button class="btn" type="submit">Tarixi aç</button>
+                    </form>
+
+                    <form method="POST" action="/admin/date/{selected_date}/clear" onsubmit="return confirm('Bu tarix üzrə bütün nəticələri silmək istədiyinizə əminsiniz?')">
+                        <button class="btn btn-danger" type="submit">Bu tarixin bütün nəticələrini sil</button>
+                    </form>
+                </div>
+
+                <form id="scoreTableForm" method="POST" action="/admin/scores/update">
+                    <input type="hidden" name="game_date" value="{selected_date}">
+                    <input type="hidden" name="row_count" value="{row_index - 1}">
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Komanda</th>
+                                    {''.join([f'<th>{label}</th>' for _, label in ROUND_FIELDS])}
+                                    <th>Toplam</th>
+                                    <th>Əməliyyat</th>
+                                </tr>
+                            </thead>
+                            <tbody>{score_rows}</tbody>
+                        </table>
+                    </div>
+
+                    <button class="btn" type="submit">Cədvəli yadda saxla</button>
+                </form>
+            </div>
         </div>
     </main>
+
+    <script>
+        const roundFields = {json.dumps([field for field, _ in ROUND_FIELDS])};
+
+        function updateRowTotal(rowIndex) {{
+            let total = 0;
+            for (const field of roundFields) {{
+                const input = document.querySelector(`[name="${{field}}_${{rowIndex}}"]`);
+                if (input && input.value !== "") {{
+                    total += parseInt(input.value || "0", 10);
+                }}
+            }}
+            const totalCell = document.getElementById(`total_${{rowIndex}}`);
+            if (totalCell) {{
+                totalCell.textContent = total;
+            }}
+        }}
+    </script>
     """
-    return layout(content)
+    return render_template_string(layout(content))
 
 
 @app.route("/admin/team-name/add", methods=["POST"])
@@ -558,8 +648,8 @@ def add_team_name():
     return redirect(url_for("admin"))
 
 
-@app.route("/admin/result/add", methods=["POST"])
-def add_result():
+@app.route("/admin/team-names/update", methods=["POST"])
+def update_team_names():
     if not login_required():
         return redirect(url_for("login"))
     if not admin_required():
@@ -569,8 +659,12 @@ def add_result():
     team_id = request.form.get("team_id", type=int)
     team = db.get_team(team_id)
 
-    if not team:
-        return redirect(url_for("admin", game_date=game_date))
+    id_to_new_name = {}
+    for team in teams:
+        new_name = request.form.get(f"team_name_{team['id']}", "").strip()
+        if new_name:
+            id_to_new_name[team["id"]] = new_name
+            team["name"] = new_name
 
     # Boş buraxılan tur əvvəlki dəyəri saxlayır.
     # Yazılan dəyər isə mənfi olsa belə qəbul edilir.
@@ -584,8 +678,8 @@ def add_result():
     return redirect(url_for("admin", game_date=game_date))
 
 
-@app.route("/admin/date/<game_date>/result/<int:result_id>/edit", methods=["GET", "POST"])
-def edit_result(game_date, result_id):
+@app.route("/admin/scores/update", methods=["POST"])
+def update_scores_table():
     if not login_required():
         return redirect(url_for("login"))
     if not admin_required():
@@ -600,34 +694,12 @@ def edit_result(game_date, result_id):
         db.update_result_rounds(result_id, rounds)
         return redirect(url_for("admin", game_date=game_date))
 
-    rounds = result.get("rounds", {})
-    safe_date = escape(game_date)
-    content = f"""
-    <main class="container">
-        <div class="card" style="max-width: 620px; margin: 0 auto;">
-            <h2>Nəticəni editlə</h2>
-            <p>Tarix: {safe_date} | Komanda: {escape(result['team_name'])}</p>
-            <form method="POST">
-                <div class="round-grid">
-                    <div><label>Tur 1</label><input type="number" name="round_1" value="{to_int(get_round_value(rounds, 'round_1'))}"></div>
-                    <div><label>Tur 2</label><input type="number" name="round_2" value="{to_int(get_round_value(rounds, 'round_2'))}"></div>
-                    <div><label>Tur 3</label><input type="number" name="round_3" value="{to_int(get_round_value(rounds, 'round_3'))}"></div>
-                    <div><label>Tur 4</label><input type="number" name="round_4" value="{to_int(get_round_value(rounds, 'round_4'))}"></div>
-                    <div><label>Tur 5</label><input type="number" name="round_5" value="{to_int(get_round_value(rounds, 'round_5'))}"></div>
-                    <div><label>Tur 6</label><input type="number" name="round_6" value="{to_int(get_round_value(rounds, 'round_6'))}"></div>
-                    <div><label>Tur 7</label><input type="number" name="round_7" value="{to_int(get_round_value(rounds, 'round_7'))}"></div>
-                    <div><label>Tur 8</label><input type="number" name="round_8" value="{to_int(get_round_value(rounds, 'round_8'))}"></div>
-                    <div><label>Tur 8(1)</label><input type="number" name="round_8_1" value="{to_int(get_round_value(rounds, 'round_8_1'))}"></div>
-                    <div><label>Tur 8(2)</label><input type="number" name="round_8_2" value="{to_int(get_round_value(rounds, 'round_8_2'))}"></div>
-                    <div><label>Tur 8(3)</label><input type="number" name="round_8_3" value="{to_int(get_round_value(rounds, 'round_8_3'))}"></div>
-                </div>
-                <button class="btn" type="submit">Yadda saxla</button>
-                <a class="btn btn-secondary" href="/admin?game_date={safe_date}">Geri qayıt</a>
-            </form>
-        </div>
-    </main>
-    """
-    return layout(content)
+    # Yalnız bu tarixin cədvəlində göstərilən komandalar saxlanır.
+    # Komanda siyahısı ayrıca qalır.
+    game["results"] = updated_results
+
+    save_games(games)
+    return redirect(url_for("admin", game_date=game_date))
 
 
 @app.route("/admin/date/<game_date>/result/<int:result_id>/delete", methods=["POST"])
@@ -638,6 +710,23 @@ def delete_result(game_date, result_id):
         return redirect(url_for("scores"))
 
     db.delete_result(result_id)
+    return redirect(url_for("admin", game_date=game_date))
+
+
+@app.route("/admin/date/<game_date>/clear", methods=["POST"])
+def clear_date_results(game_date):
+    if not login_required():
+        return redirect(url_for("login"))
+    if not admin_required():
+        return redirect(url_for("scores"))
+
+    games = load_games()
+    game = get_game_by_date(games, game_date)
+
+    if game:
+        game["results"] = []
+        save_games(games)
+
     return redirect(url_for("admin", game_date=game_date))
 
 
@@ -680,10 +769,8 @@ def about():
         </div>
     </section>
     """
-    return layout(content)
+    return render_template_string(layout(content))
 
 
 if __name__ == "__main__":
-    debug = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes")
-    port = to_int(os.environ.get("PORT"), 5000)
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(debug=True)
