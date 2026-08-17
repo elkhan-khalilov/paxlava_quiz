@@ -2,16 +2,23 @@ from flask import Flask, request, redirect, url_for, session, render_template_st
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
 from html import escape
+import json
 import os
 
 import db
 
 app = Flask(__name__)
-app.secret_key = "change-this-secret-key"
+# Prodda SECRET_KEY mühit dəyişəni ilə verilməlidir, əks halda köhnə sabit açar işlənir.
+app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key")
+
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
+USER_USERNAME = os.environ.get("USER_USERNAME", "user")
+USER_PASSWORD = os.environ.get("USER_PASSWORD", "user123")
 
 users = {
-    "admin": {"password": generate_password_hash("admin123"), "role": "admin"},
-    "user": {"password": generate_password_hash("user123"), "role": "user"}
+    ADMIN_USERNAME: {"password": generate_password_hash(ADMIN_PASSWORD), "role": "admin"},
+    USER_USERNAME: {"password": generate_password_hash(USER_PASSWORD), "role": "user"},
 }
 
 # Create the SQLite database (inside DATA_DIR) and import any existing JSON
@@ -655,25 +662,14 @@ def update_team_names():
         return redirect(url_for("scores"))
 
     game_date = request.form.get("game_date") or date.today().isoformat()
-    team_id = request.form.get("team_id", type=int)
-    team = db.get_team(team_id)
 
-    id_to_new_name = {}
-    for team in teams:
+    # Formdakı hər komanda üçün "team_name_<id>" sahəsi gəlir.
+    # Yalnız dəyişən və boş olmayan adlar yenilənir.
+    for team in db.load_teams_list():
         new_name = request.form.get(f"team_name_{team['id']}", "").strip()
-        if new_name:
-            id_to_new_name[team["id"]] = new_name
-            team["name"] = new_name
+        if new_name and new_name != team["name"]:
+            db.rename_team(team["id"], new_name)
 
-    # Boş buraxılan tur əvvəlki dəyəri saxlayır.
-    # Yazılan dəyər isə mənfi olsa belə qəbul edilir.
-    provided = {}
-    for field_name, _ in ROUND_FIELDS:
-        raw_value = request.form.get(field_name, "").strip()
-        if raw_value != "":
-            provided[field_name] = to_int(raw_value)
-
-    db.upsert_result(game_date, team_id, team["name"], provided)
     return redirect(url_for("admin", game_date=game_date))
 
 
@@ -684,20 +680,33 @@ def update_scores_table():
     if not admin_required():
         return redirect(url_for("scores"))
 
-    result = db.get_result(result_id)
-    if not result:
-        return redirect(url_for("admin", game_date=game_date))
+    game_date = request.form.get("game_date") or date.today().isoformat()
 
-    if request.method == "POST":
-        rounds = {field_name: to_int(request.form.get(field_name, 0)) for field_name, _ in ROUND_FIELDS}
-        db.update_result_rounds(result_id, rounds)
-        return redirect(url_for("admin", game_date=game_date))
+    # Cədvəldəki sətirlər "team_id_1", "team_id_2", ... şəklində gəlir.
+    row_index = 1
+    while True:
+        team_id = request.form.get(f"team_id_{row_index}", type=int)
+        if team_id is None:
+            break
 
-    # Yalnız bu tarixin cədvəlində göstərilən komandalar saxlanır.
-    # Komanda siyahısı ayrıca qalır.
-    game["results"] = updated_results
+        team_name = request.form.get(f"team_name_{row_index}", "").strip()
+        if not team_name:
+            team = db.get_team(team_id)
+            team_name = team["name"] if team else f"Komanda {team_id}"
 
-    save_games(games)
+        rounds = {
+            field_name: to_int(request.form.get(f"{field_name}_{row_index}", 0))
+            for field_name, _ in ROUND_FIELDS
+        }
+
+        result_id = request.form.get(f"result_id_{row_index}", type=int)
+        if result_id:
+            db.update_result_rounds(result_id, rounds)
+        else:
+            db.upsert_result(game_date, team_id, team_name, rounds)
+
+        row_index += 1
+
     return redirect(url_for("admin", game_date=game_date))
 
 
@@ -719,13 +728,7 @@ def clear_date_results(game_date):
     if not admin_required():
         return redirect(url_for("scores"))
 
-    games = load_games()
-    game = get_game_by_date(games, game_date)
-
-    if game:
-        game["results"] = []
-        save_games(games)
-
+    db.clear_game_results(game_date)
     return redirect(url_for("admin", game_date=game_date))
 
 
