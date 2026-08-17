@@ -481,6 +481,7 @@ def admin():
                 <div class="actions">
                     <button class="small-btn secondary" type="submit" form="teamManageForm">Yadda saxla</button>
                     <form class="inline-form" method="POST" action="/admin/team-name/{team['id']}/delete" onsubmit="return confirm('Bu komandanı tam silmək istədiyinizə əminsiniz? Bu komandanın bütün tarixlər üzrə nəticələri də silinəcək.')">
+                        <input type="hidden" name="game_date" value="{selected_date}">
                         <button class="small-btn danger" type="submit">Komandanı sil</button>
                     </form>
                 </div>
@@ -652,6 +653,18 @@ def add_team_name():
         db.add_team(team_name)
 
     return redirect(url_for("admin"))
+
+
+@app.route("/admin/team-name/<int:team_id>/delete", methods=["POST"])
+def delete_team_name(team_id):
+    if not login_required():
+        return redirect(url_for("login"))
+    if not admin_required():
+        return redirect(url_for("scores"))
+
+    game_date = request.form.get("game_date") or date.today().isoformat()
+    db.delete_team(team_id)
+    return redirect(url_for("admin", game_date=game_date))
 
 
 @app.route("/admin/team-names/update", methods=["POST"])

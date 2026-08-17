@@ -123,6 +123,23 @@ def add_team(name):
     return True
 
 
+def delete_team(team_id):
+    """Delete a team together with every result it holds across all dates.
+
+    results.team_id has no ON DELETE CASCADE and foreign keys are enforced,
+    so the results have to go first or SQLite rejects the delete.
+    """
+    if team_id is None:
+        return False
+    with get_connection() as conn:
+        exists = conn.execute("SELECT 1 FROM teams WHERE id = ?", (team_id,)).fetchone()
+        if not exists:
+            return False
+        conn.execute("DELETE FROM results WHERE team_id = ?", (team_id,))
+        conn.execute("DELETE FROM teams WHERE id = ?", (team_id,))
+    return True
+
+
 def rename_team(team_id, new_name):
     """Rename a team and keep the denormalised team_name on results in sync."""
     new_name = (new_name or "").strip()
