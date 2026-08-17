@@ -25,11 +25,10 @@ ROUND_FIELDS = [
     ("round_4", "Tur 4"),
     ("round_5", "Tur 5"),
     ("round_6", "Tur 6"),
-    ("round_7", "Tur 7"),
-    ("round_8", "Tur 8"),
-    ("round_8_1", "Tur 8(1)"),
-    ("round_8_2", "Tur 8(2)"),
-    ("round_8_3", "Tur 8(3)"),
+    ("round_7_1", "Tur 7(1)"),
+    ("round_7_2", "Tur 7(2)"),
+    ("round_7_3", "Tur 7(3)"),
+    ("round_7_4", "Tur 7(4)")
 ]
 
 
@@ -46,9 +45,10 @@ def get_game_by_date(games, game_date):
 
 def get_round_value(rounds, field):
     legacy_map = {
-        "round_8_1": "round_8(1)",
-        "round_8_2": "round_8(2)",
-        "round_8_3": "round_8(3)",
+        "round_7_1": "round_7(1)",
+        "round_7_2": "round_7(2)",
+        "round_7_3": "round_7(3)",
+        "round_7_4": "round_7(4)"
     }
     if field in rounds:
         return rounds.get(field, 0)
@@ -402,11 +402,10 @@ def scores():
             <td>{get_round_value(item['rounds'], 'round_4')}</td>
             <td>{get_round_value(item['rounds'], 'round_5')}</td>
             <td>{get_round_value(item['rounds'], 'round_6')}</td>
-            <td>{get_round_value(item['rounds'], 'round_7')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8_1')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8_2')}</td>
-            <td>{get_round_value(item['rounds'], 'round_8_3')}</td>
+            <td>{get_round_value(item['rounds'], 'round_7_1')}</td>
+            <td>{get_round_value(item['rounds'], 'round_7_2')}</td>
+            <td>{get_round_value(item['rounds'], 'round_7_3')}</td>
+            <td>{get_round_value(item['rounds'], 'round_7_4')}</td>
             <td class="total-cell">{calculate_total(item.get('rounds', {}))}</td>
         </tr>
         """
@@ -434,7 +433,7 @@ def scores():
                     <thead>
                         <tr>
                             <th>#</th><th>Komanda</th><th>Tur 1</th><th>Tur 2</th><th>Tur 3</th><th>Tur 4</th>
-                            <th>Tur 5</th><th>Tur 6</th><th>Tur 7</th><th>Tur 8</th><th>Tur 8(1)</th><th>Tur 8(2)</th><th>Tur 8(3)</th><th>Toplam</th>
+                            <th>Tur 5</th><th>Tur 6</th><th>Tur 7(1)</th><th>Tur 7(2)</th><th>Tur 7(3)</th><th>Tur 7(4)</th><th>Toplam</th>
                         </tr>
                     </thead>
                     <tbody>{rows}</tbody>

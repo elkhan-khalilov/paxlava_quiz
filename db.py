@@ -16,14 +16,15 @@ DB_PATH = os.environ.get("DB_PATH", os.path.join(DATA_DIR, "quiz.db"))
 # Canonical round columns (must match ROUND_FIELDS in main.py).
 ROUND_KEYS = [
     "round_1", "round_2", "round_3", "round_4", "round_5",
-    "round_6", "round_7", "round_8", "round_8_1", "round_8_2", "round_8_3",
+    "round_6", "round_7_1", "round_7_2", "round_7_3","round_7_4",
 ]
 
-# Old JSON used keys like "round_8(1)"; map them to the new column names.
+# Old JSON used keys like "round_7(1)"; map them to the new column names.
 _LEGACY_ROUND_KEYS = {
-    "round_8_1": "round_8(1)",
-    "round_8_2": "round_8(2)",
-    "round_8_3": "round_8(3)",
+    "round_7_1": "round_7(1)",
+    "round_7_2": "round_7(2)",
+    "round_7_3": "round_7(3)",
+    "round_7_4": "round_7(4)",
 }
 
 
