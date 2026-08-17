@@ -48,7 +48,7 @@ def get_round_value(rounds, field):
         "round_7_1": "round_7(1)",
         "round_7_2": "round_7(2)",
         "round_7_3": "round_7(3)",
-        "round_7_4": "round_7(4)"
+        "round_7_4": "round_7(4)",
     }
     if field in rounds:
         return rounds.get(field, 0)
