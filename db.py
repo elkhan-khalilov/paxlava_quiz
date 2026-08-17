@@ -123,6 +123,23 @@ def add_team(name):
     return True
 
 
+def rename_team(team_id, new_name):
+    """Rename a team and keep the denormalised team_name on results in sync."""
+    new_name = (new_name or "").strip()
+    if team_id is None or not new_name:
+        return False
+    with get_connection() as conn:
+        clash = conn.execute(
+            "SELECT 1 FROM teams WHERE lower(name) = lower(?) AND id != ?",
+            (new_name, team_id),
+        ).fetchone()
+        if clash:
+            return False
+        conn.execute("UPDATE teams SET name = ? WHERE id = ?", (new_name, team_id))
+        conn.execute("UPDATE results SET team_name = ? WHERE team_id = ?", (new_name, team_id))
+    return True
+
+
 # --- Games / results -------------------------------------------------------
 
 def load_games():
@@ -203,6 +220,16 @@ def update_result_rounds(result_id, rounds):
 def delete_result(result_id):
     with get_connection() as conn:
         conn.execute("DELETE FROM results WHERE id = ?", (result_id,))
+
+
+def clear_game_results(game_date):
+    """Remove every result recorded for a given date."""
+    with get_connection() as conn:
+        row = conn.execute("SELECT id FROM games WHERE date = ?", (game_date,)).fetchone()
+        if not row:
+            return 0
+        cur = conn.execute("DELETE FROM results WHERE game_id = ?", (row["id"],))
+        return cur.rowcount
 
 
 # --- Migration from the old JSON files -------------------------------------
